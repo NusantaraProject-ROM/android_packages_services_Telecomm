@@ -145,6 +145,7 @@ public final class CallLogManager extends CallsManagerListenerBase {
 
     private Object mLock;
     private String mCurrentCountryIso;
+    private SensitivePhoneNumbers mSensitivePhoneNumbers;
 
     public CallLogManager(Context context, PhoneAccountRegistrar phoneAccountRegistrar,
             MissedCallNotifier missedCallNotifier) {
@@ -154,6 +155,7 @@ public final class CallLogManager extends CallsManagerListenerBase {
         mPhoneAccountRegistrar = phoneAccountRegistrar;
         mMissedCallNotifier = missedCallNotifier;
         mLock = new Object();
+        mSensitivePhoneNumbers = new SensitivePhoneNumbers();
     }
 
     @Override
@@ -396,9 +398,12 @@ public final class CallLogManager extends CallsManagerListenerBase {
                     CarrierConfigManager.KEY_ALLOW_EMERGENCY_NUMBERS_IN_CALL_LOG_BOOL);
         }
 
-        // Don't log emergency numbers if the device doesn't allow it.
+        // Don't log emergency nor sensitive numbers if the device doesn't allow it.
+        boolean isSensitiveNumber = mSensitivePhoneNumbers.isSensitiveNumber(mContext, number,
+                accountHandle.getId());
+        Log.d(TAG, "isSensitiveNumber: " + isSensitiveNumber);
         final boolean isOkToLogThisCall = (!isEmergency || okToLogEmergencyNumber)
-                && !isUnloggableNumber(number, configBundle);
+                && !isUnloggableNumber(number, configBundle) && !isSensitiveNumber;
 
         sendAddCallBroadcast(callType, duration);
 
