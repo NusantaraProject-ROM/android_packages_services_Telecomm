@@ -441,6 +441,7 @@ public class BluetoothPhoneServiceImpl {
                     synchronized (mLock) {
                         Log.w(TAG, "onServiceConnected: setting mBluetoothHeadset");
                         setBluetoothHeadset(new BluetoothHeadsetProxy((BluetoothHeadset) proxy));
+                        updateHeadsetWithCallState(true /* force */);
                     }
                 }
 
@@ -945,6 +946,7 @@ public class BluetoothPhoneServiceImpl {
                 return CALL_STATE_HELD;
 
             case CallState.RINGING:
+            case CallState.ANSWERED:
                 if (isForegroundCall) {
                     return CALL_STATE_INCOMING;
                 } else {

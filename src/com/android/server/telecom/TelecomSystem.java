@@ -96,6 +96,8 @@ public class TelecomSystem {
                 .addDataAuthority(DialerCodeReceiver.TELECOM_SECRET_CODE_DEBUG_OFF, null);
         DIALER_SECRET_CODE_FILTER
                 .addDataAuthority(DialerCodeReceiver.TELECOM_SECRET_CODE_MARK, null);
+        DIALER_SECRET_CODE_FILTER
+                .addDataAuthority(DialerCodeReceiver.TELECOM_SECRET_CODE_MENU, null);
     }
 
     private static TelecomSystem INSTANCE = null;
@@ -193,6 +195,7 @@ public class TelecomSystem {
             PhoneNumberUtilsAdapter phoneNumberUtilsAdapter,
             IncomingCallNotifier incomingCallNotifier,
             InCallTonePlayer.ToneGeneratorFactory toneGeneratorFactory,
+            CallAudioRouteStateMachine.Factory callAudioRouteStateMachineFactory,
             ClockProxy clockProxy) {
         mContext = context.getApplicationContext();
         LogUtils.initLogging(mContext);
@@ -227,7 +230,7 @@ public class TelecomSystem {
                     }
                 });
         BluetoothDeviceManager bluetoothDeviceManager = new BluetoothDeviceManager(mContext,
-                new BluetoothAdapterProxy(), mLock);
+                new BluetoothAdapterProxy());
         BluetoothRouteManager bluetoothRouteManager = new BluetoothRouteManager(mContext, mLock,
                 bluetoothDeviceManager, new Timeouts.Adapter());
         BluetoothStateReceiver bluetoothStateReceiver = new BluetoothStateReceiver(
@@ -277,6 +280,8 @@ public class TelecomSystem {
                 toneGeneratorFactory,
                 clockProxy,
                 bluetoothStateReceiver,
+                callAudioRouteStateMachineFactory,
+                new CallAudioModeStateMachine.Factory(),
                 inCallControllerFactory);
 
         mIncomingCallNotifier = incomingCallNotifier;

@@ -33,9 +33,7 @@ import com.android.server.telecom.BluetoothHeadsetProxy;
 import com.android.server.telecom.TelecomSystem;
 import com.android.server.telecom.Timeouts;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -571,9 +569,12 @@ public class BluetoothRouteManager extends StateMachine {
         }
     }
 
+    public boolean hasBtActiveDevice() {
+        return mActiveDeviceCache != null;
+    }
+
     public Collection<BluetoothDevice> getConnectedDevices() {
-        return Collections.unmodifiableCollection(
-                new ArrayList<>(mDeviceManager.getConnectedDevices()));
+        return mDeviceManager.getConnectedDevices();
     }
 
     private String connectHfpAudio(String address) {
@@ -770,19 +771,22 @@ public class BluetoothRouteManager extends StateMachine {
 
     @VisibleForTesting
     public void setInitialStateForTesting(String stateName, BluetoothDevice device) {
-        switch (stateName) {
-            case AUDIO_OFF_STATE_NAME:
-                transitionTo(mAudioOffState);
-                break;
-            case AUDIO_CONNECTING_STATE_NAME_PREFIX:
-                transitionTo(getConnectingStateForAddress(device.getAddress(),
-                        "setInitialStateForTesting"));
-                break;
-            case AUDIO_CONNECTED_STATE_NAME_PREFIX:
-                transitionTo(getConnectedStateForAddress(device.getAddress(),
-                        "setInitialStateForTesting"));
-                break;
-        }
+        sendMessage(RUN_RUNNABLE, (Runnable) () -> {
+            switch (stateName) {
+                case AUDIO_OFF_STATE_NAME:
+                    transitionTo(mAudioOffState);
+                    break;
+                case AUDIO_CONNECTING_STATE_NAME_PREFIX:
+                    transitionTo(getConnectingStateForAddress(device.getAddress(),
+                            "setInitialStateForTesting"));
+                    break;
+                case AUDIO_CONNECTED_STATE_NAME_PREFIX:
+                    transitionTo(getConnectedStateForAddress(device.getAddress(),
+                            "setInitialStateForTesting"));
+                    break;
+            }
+            Log.i(LOG_TAG, "transition for testing done: %s", stateName);
+        });
     }
 
     @VisibleForTesting

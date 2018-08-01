@@ -97,4 +97,5 @@
     <string name="phone_strings_call_blocking_turned_off_notification_text_txt" msgid="6264230048947693941">"କଲ୍ ଅବରୋଧ ସୁବିଧାକୁ ଅକ୍ଷମ କରାଯାଇଛି"</string>
     <string name="phone_strings_emergency_call_made_dialog_title_txt" msgid="7421611725400166580">"ଜରୁରିକାଳୀନ କଲ୍ କରାଗଲା"</string>
     <string name="phone_strings_emergency_call_made_dialog_call_blocking_text_txt" msgid="4083285098613193052">"ଜରୁରିକାଳୀନ ସହାୟତା କର୍ମଚାରୀମାନେ ଆପଣଙ୍କୁ ଯୋଗଯୋଗ କରିବା ପାଇଁ କଲ୍ ଅବରୋଧକୁ ଅକ୍ଷମ କରାଯାଇଛି।"</string>
+    <string name="developer_title" msgid="1816273446906554627">"ଟେଲେକମ୍ ଡେଭେଲପର୍ ମେନୁ"</string>
 </resources>

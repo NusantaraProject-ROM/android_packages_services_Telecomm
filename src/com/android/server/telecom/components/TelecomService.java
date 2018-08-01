@@ -33,6 +33,7 @@ import com.android.internal.telephony.CallerInfoAsyncQuery;
 import com.android.server.telecom.AsyncRingtonePlayer;
 import com.android.server.telecom.BluetoothAdapterProxy;
 import com.android.server.telecom.BluetoothPhoneServiceImpl;
+import com.android.server.telecom.CallAudioRouteStateMachine;
 import com.android.server.telecom.CallerInfoAsyncQueryFactory;
 import com.android.server.telecom.CallsManager;
 import com.android.server.telecom.ClockProxy;
@@ -48,6 +49,7 @@ import com.android.server.telecom.PhoneNumberUtilsAdapterImpl;
 import com.android.server.telecom.ProximitySensorManagerFactory;
 import com.android.server.telecom.InCallWakeLockController;
 import com.android.server.telecom.ProximitySensorManager;
+import com.android.server.telecom.R;
 import com.android.server.telecom.TelecomSystem;
 import com.android.server.telecom.TelecomWakeLock;
 import com.android.server.telecom.Timeouts;
@@ -84,6 +86,9 @@ public class TelecomService extends Service implements TelecomSystem.Component {
             NotificationChannelManager notificationChannelManager =
                     new NotificationChannelManager();
             notificationChannelManager.createChannels(context);
+
+            boolean shouldPauseBetweenRingtoneRepeat = context.getResources().getBoolean(
+                    R.bool.should_pause_between_ringtone_repeats);
             TelecomSystem.setInstance(
                     new TelecomSystem(
                             context,
@@ -163,20 +168,13 @@ public class TelecomService extends Service implements TelecomSystem.Component {
                                             phoneAccountRegistrar);
                                 }
                             },
-                            new ConnectionServiceFocusManager
-                                    .ConnectionServiceFocusManagerFactory() {
-                                @Override
-                                public ConnectionServiceFocusManager create(
-                                        ConnectionServiceFocusManager.CallsManagerRequester requester,
-                                        Looper looper) {
-                                    return new ConnectionServiceFocusManager(requester, looper);
-                                }
-                            },
+                            ConnectionServiceFocusManager::new,
                             new Timeouts.Adapter(),
-                            new AsyncRingtonePlayer(),
+                            new AsyncRingtonePlayer(shouldPauseBetweenRingtoneRepeat),
                             new PhoneNumberUtilsAdapterImpl(),
                             new IncomingCallNotifier(context),
                             ToneGenerator::new,
+                            new CallAudioRouteStateMachine.Factory(),
                             new ClockProxy() {
                                 @Override
                                 public long currentTimeMillis() {
