@@ -131,6 +131,7 @@ public class CallsManager extends Call.ListenerBase
         void onHoldToneRequested(Call call);
         void onExternalCallChanged(Call call, boolean isExternalCall);
         void onDisconnectedTonePlaying(boolean isTonePlaying);
+        void onConnectionTimeChanged(Call call);
     }
 
     /** Interface used to define the action which is executed delay under some condition. */
@@ -553,7 +554,7 @@ public class CallsManager extends Call.ListenerBase
         List<IncomingCallFilter.CallFilter> filters = new ArrayList<>();
         filters.add(new DirectToVoicemailCallFilter(mCallerInfoLookupHelper));
         filters.add(new AsyncBlockCheckFilter(mContext, new BlockCheckerAdapter(),
-                mCallerInfoLookupHelper));
+                mCallerInfoLookupHelper, null));
         filters.add(new CallScreeningServiceFilter(mContext, this, mPhoneAccountRegistrar,
                 mDefaultDialerCache, new ParcelableCallUtils.Converter(), mLock));
         new IncomingCallFilter(mContext, this, incomingCall, mLock,
@@ -2243,11 +2244,22 @@ public class CallsManager extends Call.ListenerBase
         return getFirstCallWithState(CallState.RINGING, CallState.ANSWERED) != null;
     }
 
-    boolean onMediaButton(int type) {
+    @VisibleForTesting
+    public boolean onMediaButton(int type) {
         if (hasAnyCalls()) {
             Call ringingCall = getFirstCallWithState(CallState.RINGING);
             if (HeadsetMediaButton.SHORT_PRESS == type) {
                 if (ringingCall == null) {
+                    Call activeCall = getFirstCallWithState(CallState.ACTIVE);
+                    Call onHoldCall = getFirstCallWithState(CallState.ON_HOLD);
+                    if (activeCall != null && onHoldCall != null) {
+                        // Two calls, short-press -> switch calls
+                        Log.addEvent(onHoldCall, LogUtils.Events.INFO,
+                                "two calls, media btn short press - switch call.");
+                        unholdCall(onHoldCall);
+                        return true;
+                    }
+
                     Call callToHangup = getFirstCallWithState(CallState.RINGING, CallState.DIALING,
                             CallState.PULLING, CallState.ACTIVE, CallState.ON_HOLD);
                     Log.addEvent(callToHangup, LogUtils.Events.INFO,
@@ -2266,6 +2278,16 @@ public class CallsManager extends Call.ListenerBase
                             LogUtils.Events.INFO, "media btn long press - reject");
                     ringingCall.reject(false, null);
                 } else {
+                    Call activeCall = getFirstCallWithState(CallState.ACTIVE);
+                    Call onHoldCall = getFirstCallWithState(CallState.ON_HOLD);
+                    if (activeCall != null && onHoldCall != null) {
+                        // Two calls, long-press -> end current call
+                        Log.addEvent(activeCall, LogUtils.Events.INFO,
+                                "two calls, media btn long press - end current call.");
+                        disconnectCall(activeCall);
+                        return true;
+                    }
+
                     Log.addEvent(getForegroundCall(), LogUtils.Events.INFO,
                             "media btn long press - mute");
                     mCallAudioManager.toggleMute();
@@ -2615,27 +2637,31 @@ public class CallsManager extends Call.ListenerBase
             // into a well-defined state machine.
             // TODO: Define expected state transitions here, and log when an
             // unexpected transition occurs.
-            call.setState(newState, tag);
-            maybeShowErrorDialogOnDisconnect(call);
+            if (call.setState(newState, tag)) {
+                maybeShowErrorDialogOnDisconnect(call);
 
-            Trace.beginSection("onCallStateChanged");
+                Trace.beginSection("onCallStateChanged");
 
-            maybeHandleHandover(call, newState);
+                maybeHandleHandover(call, newState);
 
-            // Only broadcast state change for calls that are being tracked.
-            if (mCalls.contains(call)) {
-                updateCanAddCall();
-                for (CallsManagerListener listener : mListeners) {
-                    if (LogUtils.SYSTRACE_DEBUG) {
-                        Trace.beginSection(listener.getClass().toString() + " onCallStateChanged");
-                    }
-                    listener.onCallStateChanged(call, oldState, newState);
-                    if (LogUtils.SYSTRACE_DEBUG) {
-                        Trace.endSection();
+                // Only broadcast state change for calls that are being tracked.
+                if (mCalls.contains(call)) {
+                    updateCanAddCall();
+                    for (CallsManagerListener listener : mListeners) {
+                        if (LogUtils.SYSTRACE_DEBUG) {
+                            Trace.beginSection(listener.getClass().toString() +
+                                    " onCallStateChanged");
+                        }
+                        listener.onCallStateChanged(call, oldState, newState);
+                        if (LogUtils.SYSTRACE_DEBUG) {
+                            Trace.endSection();
+                        }
                     }
                 }
+                Trace.endSection();
+            } else {
+                Log.i(this, "failed in setting the state to new state");
             }
-            Trace.endSection();
         }
     }
 
@@ -4035,7 +4061,9 @@ public class CallsManager extends Call.ListenerBase
             // We do not update the UI until we get confirmation of the answer() through
             // {@link #markCallAsActive}.
             mCall.answer(mVideoState);
-            setCallState(mCall, CallState.ANSWERED, "answered");
+            if (mCall.getState() == CallState.RINGING) {
+                setCallState(mCall, CallState.ANSWERED, "answered");
+            }
             if (isSpeakerphoneAutoEnabledForVideoCalls(mVideoState)) {
                 mCall.setStartWithSpeakerphoneOn(true);
             }
@@ -4059,17 +4087,17 @@ public class CallsManager extends Call.ListenerBase
         }
     }
 
-    void resetCdmaConnectionTime(Call call) {
-        call.setConnectTimeMillis(System.currentTimeMillis());
-        if (mCalls.contains(call)) {
-            for (CallsManagerListener listener : mListeners) {
-                listener.onCallStateChanged(call, CallState.ACTIVE, CallState.ACTIVE);
-            }
-        }
-    }
-
     public void clearPendingMOEmergencyCall() {
         mPendingMOEmerCall = null;
         mDisconnectingCall = null;
+    }
+
+    public void resetConnectionTime(Call call) {
+        call.setConnectTimeMillis(System.currentTimeMillis());
+        if (mCalls.contains(call)) {
+            for (CallsManagerListener listener : mListeners) {
+                listener.onConnectionTimeChanged(call);
+            }
+        }
     }
 }
