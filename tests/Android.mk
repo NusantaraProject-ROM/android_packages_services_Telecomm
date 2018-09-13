@@ -47,7 +47,8 @@ LOCAL_JAVA_LIBRARIES := \
     android.test.mock \
     android.test.base \
     android.test.runner \
-    telephony-common
+    telephony-common \
+    telephony-ext
 
 LOCAL_USE_AAPT2 := true
 
