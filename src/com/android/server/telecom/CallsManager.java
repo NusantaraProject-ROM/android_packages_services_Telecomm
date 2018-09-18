@@ -369,7 +369,7 @@ public class CallsManager extends Call.ListenerBase
             CallAudioManager.AudioServiceFactory audioServiceFactory,
             BluetoothRouteManager bluetoothManager,
             WiredHeadsetManager wiredHeadsetManager,
-            SystemStateProvider systemStateProvider,
+            SystemStateHelper systemStateHelper,
             DefaultDialerCache defaultDialerCache,
             Timeouts.Adapter timeoutsAdapter,
             AsyncRingtonePlayer asyncRingtonePlayer,
@@ -431,15 +431,15 @@ public class CallsManager extends Call.ListenerBase
         RingtoneFactory ringtoneFactory = new RingtoneFactory(this, context);
         SystemVibrator systemVibrator = new SystemVibrator(context);
         mInCallController = inCallControllerFactory.create(context, mLock, this,
-                systemStateProvider, defaultDialerCache, mTimeoutsAdapter,
+                systemStateHelper, defaultDialerCache, mTimeoutsAdapter,
                 emergencyCallHelper);
         mRinger = new Ringer(playerFactory, context, systemSettingsUtil, asyncRingtonePlayer,
                 ringtoneFactory, systemVibrator,
                 new Ringer.VibrationEffectProxy(), mInCallController);
         mCallRecordingTonePlayer = new CallRecordingTonePlayer(mContext, audioManager, mLock);
         mCallAudioManager = new CallAudioManager(callAudioRouteStateMachine,
-                this, callAudioModeStateMachineFactory.create((AudioManager)
-                        mContext.getSystemService(Context.AUDIO_SERVICE)),
+                this, callAudioModeStateMachineFactory.create(systemStateHelper,
+                (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE)),
                 playerFactory, mRinger, new RingbackPlayer(playerFactory),
                 bluetoothStateReceiver, mDtmfLocalTonePlayer);
 
@@ -1356,6 +1356,7 @@ public class CallsManager extends Call.ListenerBase
             }
         }
         setIntentExtrasAndStartTime(call, extras);
+        setCallSourceToAnalytics(call, originalIntent);
 
         if ((isPotentialMMICode(handle) || isPotentialInCallMMICode) && !needsAccountSelection) {
             // Do not add the call if it is a potential MMI code.
@@ -3596,6 +3597,18 @@ public class CallsManager extends Call.ListenerBase
               SystemClock.elapsedRealtime());
 
         call.setIntentExtras(extras);
+    }
+
+    private void setCallSourceToAnalytics(Call call, Intent originalIntent) {
+        if (originalIntent == null) {
+            return;
+        }
+
+        int callSource = originalIntent.getIntExtra(TelecomManager.EXTRA_CALL_SOURCE,
+                Analytics.CALL_SOURCE_UNSPECIFIED);
+
+        // Call source is only used by metrics, so we simply set it to Analytics directly.
+        call.getAnalytics().setCallSource(callSource);
     }
 
     /**

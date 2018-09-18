@@ -20,7 +20,7 @@ include $(CLEAR_VARS)
 LOCAL_STATIC_JAVA_LIBRARIES := \
     android-ex-camera2 \
     guava \
-    mockito-target \
+    mockito-target-inline \
     android-support-test \
     platform-test-annotations
 
@@ -51,6 +51,9 @@ LOCAL_JAVA_LIBRARIES := \
     telephony-ext
 
 LOCAL_USE_AAPT2 := true
+
+LOCAL_JNI_SHARED_LIBRARIES := \
+    libdexmakerjvmtiagent \
 
 LOCAL_AAPT_FLAGS := \
     --auto-add-overlay \
