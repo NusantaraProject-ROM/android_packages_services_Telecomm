@@ -145,17 +145,17 @@ public class ConnectionServiceWrapper extends ServiceBinder implements
         }
 
         @Override
-        public void resetCdmaConnectionTime(String callId, Session.Info sessionInfo) {
+        public void resetConnectionTime(String callId, Session.Info sessionInfo) {
             Log.startSession(sessionInfo, "CSW.rCCT");
             long token = Binder.clearCallingIdentity();
             try {
                 synchronized (mLock) {
-                    logIncoming("resetCdmaConnectionTime %s", callId);
+                    logIncoming("resetConnectionTime %s", callId);
                     Call call = mCallIdMapper.getCall(callId);
                     if (call != null) {
-                        mCallsManager.resetCdmaConnectionTime(call);
+                        mCallsManager.resetConnectionTime(call);
                     } else {
-                        // Log.w(this, "resetCdmaConnectionTime, unknown call id: %s", msg.obj);
+                        // Log.w(this, "resetConnectionTime, unknown call id: %s", msg.obj);
                     }
                 }
             } finally {

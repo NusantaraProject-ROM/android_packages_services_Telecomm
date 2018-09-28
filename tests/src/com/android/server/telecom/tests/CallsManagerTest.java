@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyChar;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -625,6 +626,25 @@ public class CallsManagerTest extends TelecomTestCase {
 
     @SmallTest
     @Test
+    public void testAnswerAlreadyActiveCall() {
+        // GIVEN a CallsManager with no ongoing call.
+
+        // WHEN answer an already active call
+        Call incomingCall = addSpyCall();
+        mCallsManager.answerCall(incomingCall, VideoProfile.STATE_AUDIO_ONLY);
+
+        // THEN the focus request for incoming call is sent
+        verifyFocusRequestAndExecuteCallback(incomingCall);
+
+        // and the incoming call is answered.
+        verify(incomingCall).answer(VideoProfile.STATE_AUDIO_ONLY);
+
+        // and the incoming call's state is still ACTIVE
+        assertEquals(CallState.ACTIVE, incomingCall.getState());
+    }
+
+    @SmallTest
+    @Test
     public void testSetActiveCallWhenOngoingCallCanNotBeHeldAndFromDifferentConnectionService() {
         ConnectionServiceWrapper connSvr1 = Mockito.mock(ConnectionServiceWrapper.class);
         ConnectionServiceWrapper connSvr2 = Mockito.mock(ConnectionServiceWrapper.class);
@@ -746,6 +766,106 @@ public class CallsManagerTest extends TelecomTestCase {
 
         // THEN the incoming call is not using call filtering
         verify(incomingCall).setIsUsingCallFiltering(eq(false));
+    }
+
+    @SmallTest
+    @Test
+    public void testAcceptIncomingCallWhenHeadsetMediaButtonShortPress() {
+        // GIVEN an incoming call
+        Call incomingCall = addSpyCall();
+        doReturn(CallState.RINGING).when(incomingCall).getState();
+
+        // WHEN media button short press
+        mCallsManager.onMediaButton(HeadsetMediaButton.SHORT_PRESS);
+
+        // THEN the incoming call is answered
+        verify(incomingCall).answer(VideoProfile.STATE_AUDIO_ONLY);
+    }
+
+    @SmallTest
+    @Test
+    public void testRejectIncomingCallWhenHeadsetMediaButtonLongPress() {
+        // GIVEN an incoming call
+        Call incomingCall = addSpyCall();
+        doReturn(CallState.RINGING).when(incomingCall).getState();
+
+        // WHEN media button long press
+        mCallsManager.onMediaButton(HeadsetMediaButton.LONG_PRESS);
+
+        // THEN the incoming call is rejected
+        verify(incomingCall).reject(false, null);
+    }
+
+    @SmallTest
+    @Test
+    public void testHangupOngoingCallWhenHeadsetMediaButtonShortPress() {
+        // GIVEN an ongoing call
+        Call ongoingCall = addSpyCall();
+        doReturn(CallState.ACTIVE).when(ongoingCall).getState();
+
+        // WHEN media button short press
+        mCallsManager.onMediaButton(HeadsetMediaButton.SHORT_PRESS);
+
+        // THEN the active call is disconnected
+        verify(ongoingCall).disconnect();
+    }
+
+    @SmallTest
+    @Test
+    public void testToggleMuteWhenHeadsetMediaButtonLongPressDuringOngoingCall() {
+        // GIVEN an ongoing call
+        Call ongoingCall = addSpyCall();
+        doReturn(CallState.ACTIVE).when(ongoingCall).getState();
+
+        // WHEN media button long press
+        mCallsManager.onMediaButton(HeadsetMediaButton.LONG_PRESS);
+
+        // THEN the microphone toggle mute
+        verify(mCallAudioRouteStateMachine)
+                .sendMessageWithSessionInfo(CallAudioRouteStateMachine.TOGGLE_MUTE);
+    }
+
+    @SmallTest
+    @Test
+    public void testSwapCallsWhenHeadsetMediaButtonShortPressDuringTwoCalls() {
+        // GIVEN an ongoing call, and this call can be held
+        Call ongoingCall = addSpyCall();
+        doReturn(CallState.ACTIVE).when(ongoingCall).getState();
+        doReturn(true).when(ongoingCall).can(Connection.CAPABILITY_HOLD);
+        doReturn(true).when(ongoingCall).can(Connection.CAPABILITY_SUPPORT_HOLD);
+        when(mConnectionSvrFocusMgr.getCurrentFocusCall()).thenReturn(ongoingCall);
+
+        // and a held call
+        Call heldCall = addSpyCall();
+        doReturn(CallState.ON_HOLD).when(heldCall).getState();
+
+        // WHEN media button short press
+        mCallsManager.onMediaButton(HeadsetMediaButton.SHORT_PRESS);
+
+        // THEN the ongoing call is held, and the focus request for heldCall call is sent
+        verify(ongoingCall).hold(nullable(String.class));
+        verifyFocusRequestAndExecuteCallback(heldCall);
+
+        // and held call is unhold now
+        verify(heldCall).unhold(nullable(String.class));
+    }
+
+    @SmallTest
+    @Test
+    public void testHangupActiveCallWhenHeadsetMediaButtonLongPressDuringTwoCalls() {
+        // GIVEN an  ongoing call
+        Call ongoingCall = addSpyCall();
+        doReturn(CallState.ACTIVE).when(ongoingCall).getState();
+
+        // and a held call
+        Call heldCall = addSpyCall();
+        doReturn(CallState.ON_HOLD).when(heldCall).getState();
+
+        // WHEN media button long press
+        mCallsManager.onMediaButton(HeadsetMediaButton.LONG_PRESS);
+
+        // THEN the ongoing call is disconnected
+        verify(ongoingCall).disconnect();
     }
 
     private Call addSpyCallWithConnectionService(ConnectionServiceWrapper connSvr) {
