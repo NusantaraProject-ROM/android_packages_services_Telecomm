@@ -21,6 +21,8 @@
         android:sharedUserId="android.uid.system">
 
     <protected-broadcast android:name="android.intent.action.SHOW_MISSED_CALLS_NOTIFICATION" />
+    <protected-broadcast android:name="com.android.server.telecom.MESSAGE_SENT" />
+
 
     <!-- Prevents the activity manager from delaying any activity-start
          requests by this package, including requests immediately after
@@ -292,12 +294,6 @@
                 android:label="@string/developer_title"
                 android:exported="false"
                 android:process=":ui" />
-
-        <receiver android:name=".components.PrimaryCallReceiver"
-                android:exported="true"
-                android:permission="android.permission.MODIFY_PHONE_STATE"
-                android:process="system">
-        </receiver>
 
         <service android:name=".components.BluetoothPhoneService"
                 android:singleUser="true"

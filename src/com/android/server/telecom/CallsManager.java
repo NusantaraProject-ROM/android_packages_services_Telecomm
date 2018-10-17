@@ -585,9 +585,14 @@ public class CallsManager extends Call.ListenerBase
                     rejectCallAndLog(incomingCall);
                 }
             } else if (hasMaximumManagedDialingCalls(incomingCall)) {
-                Log.i(this, "onCallFilteringCompleted: Call rejected! Exceeds maximum number of " +
-                        "dialing calls.");
-                rejectCallAndLog(incomingCall);
+                if (shouldSilenceInsteadOfReject(incomingCall)) {
+                    incomingCall.silence();
+                } else {
+
+                    Log.i(this, "onCallFilteringCompleted: Call rejected! Exceeds maximum number of " +
+                            "dialing calls.");
+                    rejectCallAndLog(incomingCall);
+                }
             } else if (!isIncomingVideoCallAllowed(incomingCall)) {
                 Log.i(this, "onCallFilteringCompleted: MT Video Call rejecting.");
                 rejectCallAndLog(incomingCall);
@@ -640,16 +645,16 @@ public class CallsManager extends Call.ListenerBase
     }
 
     /**
-     * Whether allow (silence rather than reject) the incoming call if it has a different source
-     * (connection service) from the existing ringing call when reaching maximum ringing calls.
+     * In the event that the maximum supported calls of a given type is reached, the
+     * default behavior is to reject any additional calls of that type.  This checks
+     * if the device is configured to silence instead of reject the call, provided
+     * that the incoming call is from a different source (connection service).
      */
     private boolean shouldSilenceInsteadOfReject(Call incomingCall) {
         if (!mContext.getResources().getBoolean(
                 R.bool.silence_incoming_when_different_service_and_maximum_ringing)) {
             return false;
         }
-
-        Call ringingCall = null;
 
         for (Call call : mCalls) {
             // Only operate on top-level calls
@@ -661,8 +666,7 @@ public class CallsManager extends Call.ListenerBase
                 continue;
             }
 
-            if (CallState.RINGING == call.getState() &&
-                    call.getConnectionService() == incomingCall.getConnectionService()) {
+            if (call.getConnectionService() == incomingCall.getConnectionService()) {
                 return false;
             }
         }
@@ -3688,6 +3692,10 @@ public class CallsManager extends Call.ListenerBase
                 mCallAudioManager.getCallAudioState());
         Call handoverToCall = startOutgoingCall(handoverFromCall.getHandle(), handoverToHandle,
                 extras, getCurrentUserHandle(), null /* originalIntent */);
+        if (handoverToCall == null) {
+            handoverFromCall.sendCallEvent(android.telecom.Call.EVENT_HANDOVER_FAILED, null);
+            return;
+        }
         Log.addEvent(handoverFromCall, LogUtils.Events.START_HANDOVER,
                 "handOverFrom=%s, handOverTo=%s", handoverFromCall.getId(), handoverToCall.getId());
         handoverFromCall.setHandoverDestinationCall(handoverToCall);
@@ -4112,5 +4120,15 @@ public class CallsManager extends Call.ListenerBase
                 listener.onConnectionTimeChanged(call);
             }
         }
+    }
+
+    /**
+     * Determines if there is an ongoing emergency call. This can be either an outgoing emergency
+     * call, or a number which has been identified by the number as an emergency call.
+     * @return {@code true} if there is an ongoing emergency call, {@code false} otherwise.
+     */
+    public boolean isInEmergencyCall() {
+        return mCalls.stream().filter(c -> c.isEmergencyCall()
+                || c.isNetworkIdentifiedEmergencyCall()).count() > 0;
     }
 }

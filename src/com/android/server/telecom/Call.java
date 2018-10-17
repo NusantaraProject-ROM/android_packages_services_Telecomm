@@ -50,6 +50,7 @@ import android.telephony.PhoneNumberUtils;
 import android.text.TextUtils;
 import android.util.StatsLog;
 import android.os.UserHandle;
+import android.widget.Toast;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telecom.IVideoProvider;
@@ -461,7 +462,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * Indicates whether the {@link PhoneAccount} associated with this call supports video calling.
      * {@code True} if the phone account supports video calling, {@code false} otherwise.
      */
-    private boolean mIsVideoCallingSupported = false;
+    private boolean mIsVideoCallingSupportedByPhoneAccount = false;
 
     private PhoneNumberUtilsAdapter mPhoneNumberUtilsAdapter;
 
@@ -1096,9 +1097,20 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         return mDisconnectCause;
     }
 
+    /**
+     * @return {@code true} if this is an outgoing call to emergency services. An outgoing call is
+     * identified as an emergency call by the dialer phone number.
+     */
     @VisibleForTesting
     public boolean isEmergencyCall() {
         return mIsEmergencyCall;
+    }
+
+    /**
+     * @return {@code true} if the network has identified this call as an emergency call.
+     */
+    public boolean isNetworkIdentifiedEmergencyCall() {
+        return hasProperty(Connection.PROPERTY_NETWORK_IDENTIFIED_EMERGENCY_CALL);
     }
 
     /**
@@ -1222,8 +1234,19 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         return mUseCallRecordingTone;
     }
 
-    public boolean isVideoCallingSupported() {
-        return mIsVideoCallingSupported;
+    /**
+     * @return {@code true} if the {@link Call}'s {@link #getTargetPhoneAccount()} supports video.
+     */
+    public boolean isVideoCallingSupportedByPhoneAccount() {
+        return mIsVideoCallingSupportedByPhoneAccount;
+    }
+
+    /**
+     * @return {@code true} if the {@link Call} locally supports video.
+     */
+    public boolean isLocallyVideoCapable() {
+        return (getConnectionCapabilities() & Connection.CAPABILITY_SUPPORTS_VT_LOCAL_BIDIRECTIONAL)
+                == Connection.CAPABILITY_SUPPORTS_VT_LOCAL_BIDIRECTIONAL;
     }
 
     public boolean isSelfManaged() {
@@ -1325,16 +1348,16 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         if (mTargetPhoneAccountHandle == null) {
             // If no target phone account handle is specified, assume we can potentially perform a
             // video call; once the phone account is set, we can confirm that it is video capable.
-            mIsVideoCallingSupported = true;
+            mIsVideoCallingSupportedByPhoneAccount = true;
             Log.d(this, "checkIfVideoCapable: no phone account selected; assume video capable.");
             return;
         }
         PhoneAccount phoneAccount =
                 phoneAccountRegistrar.getPhoneAccountUnchecked(mTargetPhoneAccountHandle);
-        mIsVideoCallingSupported = phoneAccount != null && phoneAccount.hasCapabilities(
+        mIsVideoCallingSupportedByPhoneAccount = phoneAccount != null && phoneAccount.hasCapabilities(
                     PhoneAccount.CAPABILITY_VIDEO_CALLING);
 
-        if (!mIsVideoCallingSupported && VideoProfile.isVideo(getVideoState())) {
+        if (!mIsVideoCallingSupportedByPhoneAccount && VideoProfile.isVideo(getVideoState())) {
             // The PhoneAccount for the Call was set to one which does not support video calling,
             // and the current call is configured to be a video call; downgrade to audio-only.
             setVideoState(VideoProfile.STATE_AUDIO_ONLY);
@@ -1437,7 +1460,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         if (forceUpdate || mConnectionCapabilities != connectionCapabilities) {
             // If the phone account does not support video calling, and the connection capabilities
             // passed in indicate that the call supports video, remove those video capabilities.
-            if (!isVideoCallingSupported() && doesCallSupportVideo(connectionCapabilities)) {
+            if (!isVideoCallingSupportedByPhoneAccount()
+                    && doesCallSupportVideo(connectionCapabilities)) {
                 Log.w(this, "setConnectionCapabilities: attempt to set connection as video " +
                         "capable when not supported by the phone account.");
                 connectionCapabilities = removeVideoCapabilities(connectionCapabilities);
@@ -1458,7 +1482,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         }
     }
 
-    void setConnectionProperties(int connectionProperties) {
+    public void setConnectionProperties(int connectionProperties) {
         Log.v(this, "setConnectionProperties: %s", Connection.propertiesToString(
                 connectionProperties));
 
@@ -1873,7 +1897,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         // Check to verify that the call is still in the ringing state. A call can change states
         // between the time the user hits 'answer' and Telecom receives the command.
         if (isRinging("answer")) {
-            if (!isVideoCallingSupported() && VideoProfile.isVideo(videoState)) {
+            if (!isVideoCallingSupportedByPhoneAccount() && VideoProfile.isVideo(videoState)) {
                 // Video calling is not supported, yet the InCallService is attempting to answer as
                 // video.  We will simply answer as audio-only.
                 videoState = VideoProfile.STATE_AUDIO_ONLY;
@@ -2261,10 +2285,20 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     public void sendCallEvent(String event, int targetSdkVer, Bundle extras) {
         if (mConnectionService != null) {
             if (android.telecom.Call.EVENT_REQUEST_HANDOVER.equals(event)) {
-                if (targetSdkVer > Build.VERSION_CODES.O_MR1) {
+                if (targetSdkVer > Build.VERSION_CODES.P) {
                     Log.e(this, new Exception(), "sendCallEvent failed. Use public api handoverTo" +
-                            " for API > 27(O-MR1)");
-                    // TODO: Add "return" after DUO team adds new API support for handover
+                            " for API > 28(P)");
+                    // Event-based Handover APIs are deprecated, so inform the user.
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(mContext, "WARNING: Event-based handover APIs are deprecated "
+                                            + "and will no longer function in Android Q.",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+
+                    // Uncomment and remove toast at feature complete: return;
                 }
 
                 // Handover requests are targeted at Telecom, not the ConnectionService.
@@ -2785,7 +2819,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     public void setVideoState(int videoState) {
         // If the phone account associated with this call does not support video calling, then we
         // will automatically set the video state to audio-only.
-        if (!isVideoCallingSupported()) {
+        if (!isVideoCallingSupportedByPhoneAccount()) {
             Log.d(this, "setVideoState: videoState=%s defaulted to audio (video not supported)",
                     VideoProfile.videoStateToString(videoState));
             videoState = VideoProfile.STATE_AUDIO_ONLY;
