@@ -23,6 +23,7 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.PersistableBundle;
+import android.provider.CallLog;
 import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -62,8 +63,12 @@ public class AsyncBlockCheckFilterTest extends TelecomTestCase {
     private static final CallFilteringResult BLOCK_RESULT = new CallFilteringResult(
             false, // shouldAllowCall
             true, //shouldReject
-            false, //shouldAddToCallLog
-            false // shouldShowNotification
+            true, //shouldAddToCallLog
+            false, // shouldShowNotification
+            CallLog.Calls.BLOCK_REASON_BLOCKED_NUMBER, //blockReason
+            null, // callScreeningAppName
+            null //callScreeningComponentName
+
     );
 
     private static final CallFilteringResult PASS_RESULT = new CallFilteringResult(
@@ -74,7 +79,7 @@ public class AsyncBlockCheckFilterTest extends TelecomTestCase {
     );
 
     private static final Uri TEST_HANDLE = Uri.parse("tel:1235551234");
-    private static final int TEST_TIMEOUT = 100;
+    private static final int TEST_TIMEOUT = 1000;
 
     @Override
     @Before
