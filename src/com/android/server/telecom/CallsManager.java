@@ -621,7 +621,7 @@ public class CallsManager extends Call.ListenerBase
                 }
             } else if (!isIncomingVideoCallAllowed(incomingCall)) {
                 Log.i(this, "onCallFilteringCompleted: MT Video Call rejecting.");
-                rejectCallAndLog(incomingCall);
+                rejectCallAndLog(incomingCall, result);
             } else {
                 addCall(incomingCall);
             }
@@ -1028,7 +1028,7 @@ public class CallsManager extends Call.ListenerBase
                 call.setIsVoipAudioMode(true);
             } else {
                 // Incoming call is managed, the active call is self-managed and can't be held.
-                // We need to set extras on it to indicate whether answering will cause a 
+                // We need to set extras on it to indicate whether answering will cause a
                 // active self-managed call to drop.
                 Call activeCall = (Call) mConnectionSvrFocusMgr.getCurrentFocusCall();
                 if (activeCall != null && !canHold(activeCall) && activeCall.isSelfManaged()) {
