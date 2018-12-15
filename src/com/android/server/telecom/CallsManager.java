@@ -581,7 +581,8 @@ public class CallsManager extends Call.ListenerBase
         filters.add(new AsyncBlockCheckFilter(mContext, new BlockCheckerAdapter(),
                 mCallerInfoLookupHelper, null));
         filters.add(new CallScreeningServiceFilter(mContext, this, mPhoneAccountRegistrar,
-                mDefaultDialerCache, new ParcelableCallUtils.Converter(), mLock));
+            mDefaultDialerCache, new ParcelableCallUtils.Converter(), mLock,
+            new TelecomServiceImpl.SettingsSecureAdapterImpl()));
         new IncomingCallFilter(mContext, this, incomingCall, mLock,
                 mTimeoutsAdapter, filters).performFiltering();
     }
@@ -607,7 +608,7 @@ public class CallsManager extends Call.ListenerBase
                 } else {
                     Log.i(this, "onCallFilteringCompleted: Call rejected! " +
                             "Exceeds maximum number of ringing calls.");
-                    rejectCallAndLog(incomingCall);
+                    rejectCallAndLog(incomingCall, result);
                 }
             } else if (hasMaximumManagedDialingCalls(incomingCall)) {
                 if (shouldSilenceInsteadOfReject(incomingCall)) {
@@ -616,11 +617,11 @@ public class CallsManager extends Call.ListenerBase
 
                     Log.i(this, "onCallFilteringCompleted: Call rejected! Exceeds maximum number of " +
                             "dialing calls.");
-                    rejectCallAndLog(incomingCall);
+                    rejectCallAndLog(incomingCall, result);
                 }
             } else if (!isIncomingVideoCallAllowed(incomingCall)) {
                 Log.i(this, "onCallFilteringCompleted: MT Video Call rejecting.");
-                rejectCallAndLog(incomingCall);
+                rejectCallAndLog(incomingCall, result);
             } else {
                 addCall(incomingCall);
             }
@@ -634,8 +635,8 @@ public class CallsManager extends Call.ListenerBase
                 if (result.shouldShowNotification) {
                     Log.w(this, "onCallScreeningCompleted: blocked call, showing notification.");
                 }
-                mCallLogManager.logCall(incomingCall, Calls.MISSED_TYPE,
-                        result.shouldShowNotification);
+                mCallLogManager.logCall(incomingCall, Calls.BLOCKED_TYPE,
+                        result.shouldShowNotification, result);
             } else if (result.shouldShowNotification) {
                 Log.i(this, "onCallScreeningCompleted: blocked call, showing notification.");
                 mMissedCallNotifier.showMissedCallNotification(
@@ -1027,7 +1028,7 @@ public class CallsManager extends Call.ListenerBase
                 call.setIsVoipAudioMode(true);
             } else {
                 // Incoming call is managed, the active call is self-managed and can't be held.
-                // We need to set extras on it to indicate whether answering will cause a 
+                // We need to set extras on it to indicate whether answering will cause a
                 // active self-managed call to drop.
                 Call activeCall = (Call) mConnectionSvrFocusMgr.getCurrentFocusCall();
                 if (activeCall != null && !canHold(activeCall) && activeCall.isSelfManaged()) {
@@ -1204,10 +1205,11 @@ public class CallsManager extends Call.ListenerBase
      * @param extras The optional extras Bundle passed with the intent used for the incoming call.
      * @param initiatingUser {@link UserHandle} of user that place the outgoing call.
      * @param originalIntent
+     * @param callingPackage the package name of the app which initiated the outgoing call.
      */
     @VisibleForTesting
     public Call startOutgoingCall(Uri handle, PhoneAccountHandle phoneAccountHandle, Bundle extras,
-            UserHandle initiatingUser, Intent originalIntent) {
+            UserHandle initiatingUser, Intent originalIntent, String callingPackage) {
         boolean isReusedCall = true;
         Call call = reuseOutgoingCall(handle);
 
@@ -1238,7 +1240,7 @@ public class CallsManager extends Call.ListenerBase
                 //Reset PostDialDigits with empty string for ConfURI call.
                 call.setPostDialDigits("");
             }
-            call.initAnalytics();
+            call.initAnalytics(callingPackage);
 
             // Ensure new calls related to self-managed calls/connections are set as such.  This
             // will be overridden when the actual connection is returned in startCreateConnection,
@@ -1811,7 +1813,7 @@ public class CallsManager extends Call.ListenerBase
         } else {
             Call activeCall = (Call) mConnectionSvrFocusMgr.getCurrentFocusCall();
             String activeCallId = null;
-            if (activeCall != null) {
+            if (activeCall != null && !activeCall.isLocallyDisconnecting()) {
                 activeCallId = activeCall.getId();
                 if (canHold(activeCall)) {
                     activeCall.hold("Swap to " + call.getId());
@@ -2559,7 +2561,7 @@ public class CallsManager extends Call.ListenerBase
      * Reject an incoming call and manually add it to the Call Log.
      * @param incomingCall Incoming call that has been rejected
      */
-    private void rejectCallAndLog(Call incomingCall) {
+    private void rejectCallAndLog(Call incomingCall, CallFilteringResult result) {
         if (incomingCall.getConnectionService() != null) {
             // Only reject the call if it has not already been destroyed.  If a call ends while
             // incoming call filtering is taking place, it is possible that the call has already
@@ -2574,7 +2576,7 @@ public class CallsManager extends Call.ListenerBase
         // call notifier and the call logger manually.
         // Do we need missed call notification for direct to Voicemail calls?
         mCallLogManager.logCall(incomingCall, Calls.MISSED_TYPE,
-                true /*showNotificationForMissedCall*/);
+                true /*showNotificationForMissedCall*/, result);
     }
 
     /**
@@ -3460,7 +3462,7 @@ public class CallsManager extends Call.ListenerBase
 
     /**
      * Used to confirm creation of an outgoing call which was marked as pending confirmation in
-     * {@link #startOutgoingCall(Uri, PhoneAccountHandle, Bundle, UserHandle, Intent)}.
+     * {@link #startOutgoingCall(Uri, PhoneAccountHandle, Bundle, UserHandle, Intent, String)}.
      * Called via {@link TelecomBroadcastIntentProcessor} for a call which was confirmed via
      * {@link ConfirmCallDialogActivity}.
      * @param callId The call ID of the call to confirm.
@@ -3485,7 +3487,7 @@ public class CallsManager extends Call.ListenerBase
 
     /**
      * Used to cancel an outgoing call which was marked as pending confirmation in
-     * {@link #startOutgoingCall(Uri, PhoneAccountHandle, Bundle, UserHandle, Intent)}.
+     * {@link #startOutgoingCall(Uri, PhoneAccountHandle, Bundle, UserHandle, Intent, String)}.
      * Called via {@link TelecomBroadcastIntentProcessor} for a call which was confirmed via
      * {@link ConfirmCallDialogActivity}.
      * @param callId The call ID of the call to cancel.
@@ -3501,7 +3503,7 @@ public class CallsManager extends Call.ListenerBase
     }
 
     /**
-     * Called from {@link #startOutgoingCall(Uri, PhoneAccountHandle, Bundle, UserHandle, Intent)} when
+     * Called from {@link #startOutgoingCall(Uri, PhoneAccountHandle, Bundle, UserHandle, Intent, String)} when
      * a managed call is added while there are ongoing self-managed calls.  Starts
      * {@link ConfirmCallDialogActivity} to prompt the user to see if they wish to place the
      * outgoing call or not.
@@ -3732,7 +3734,8 @@ public class CallsManager extends Call.ListenerBase
         extras.putParcelable(TelecomManager.EXTRA_CALL_AUDIO_STATE,
                 mCallAudioManager.getCallAudioState());
         Call handoverToCall = startOutgoingCall(handoverFromCall.getHandle(), handoverToHandle,
-                extras, getCurrentUserHandle(), null /* originalIntent */);
+                extras, getCurrentUserHandle(), null /* originalIntent */,
+                null /* callingPackage */);
         if (handoverToCall == null) {
             handoverFromCall.sendCallEvent(android.telecom.Call.EVENT_HANDOVER_FAILED, null);
             return;

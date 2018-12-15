@@ -102,6 +102,10 @@ public class ParcelableCallUtils {
             properties |= android.telecom.Call.Details.PROPERTY_ENTERPRISE_CALL;
         }
 
+        if (call.getIsVoipAudioMode()) {
+            properties |= android.telecom.Call.Details.PROPERTY_VOIP_AUDIO_MODE;
+        }
+
         if (call.isRespondViaSmsCapable()) {
             capabilities |= android.telecom.Call.Details.CAPABILITY_RESPOND_VIA_TEXT;
         }

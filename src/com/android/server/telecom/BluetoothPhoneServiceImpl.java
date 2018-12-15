@@ -567,8 +567,6 @@ public class BluetoothPhoneServiceImpl {
                         Log.i(TAG, "CHLD = 1 :isAnswercallInProgress:" + isAnswercallInProgress);
                         isAnswercallInProgress = true;
                     }
-                } else if (heldCall != null) {
-                    mCallsManager.unholdCall(heldCall);
                 }
                 return true;
             }
