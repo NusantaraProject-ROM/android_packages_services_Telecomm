@@ -74,7 +74,7 @@ import com.android.server.telecom.callfiltering.AsyncBlockCheckFilter;
 import com.android.server.telecom.callfiltering.BlockCheckerAdapter;
 import com.android.server.telecom.callfiltering.CallFilterResultCallback;
 import com.android.server.telecom.callfiltering.CallFilteringResult;
-import com.android.server.telecom.callfiltering.CallScreeningServiceFilter;
+import com.android.server.telecom.callfiltering.CallScreeningServiceController;
 import com.android.server.telecom.callfiltering.DirectToVoicemailCallFilter;
 import com.android.server.telecom.callfiltering.IncomingCallFilter;
 import com.android.server.telecom.components.ErrorDialogActivity;
@@ -291,6 +291,7 @@ public class CallsManager extends Call.ListenerBase
     /* Handler tied to thread in which CallManager was initialized. */
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final EmergencyCallHelper mEmergencyCallHelper;
+    private final RoleManagerAdapter mRoleManagerAdapter;
 
     private final ConnectionServiceFocusManager.CallsManagerRequester mRequester =
             new ConnectionServiceFocusManager.CallsManagerRequester() {
@@ -404,7 +405,8 @@ public class CallsManager extends Call.ListenerBase
             BluetoothStateReceiver bluetoothStateReceiver,
             CallAudioRouteStateMachine.Factory callAudioRouteStateMachineFactory,
             CallAudioModeStateMachine.Factory callAudioModeStateMachineFactory,
-            InCallControllerFactory inCallControllerFactory) {
+            InCallControllerFactory inCallControllerFactory,
+            RoleManagerAdapter roleManagerAdapter) {
         mContext = context;
         mLock = lock;
         mPhoneNumberUtilsAdapter = phoneNumberUtilsAdapter;
@@ -449,7 +451,8 @@ public class CallsManager extends Call.ListenerBase
                 (resourceId, attributes) -> MediaPlayer.create(mContext, resourceId, attributes,
                         audioManager.generateAudioSessionId());
         InCallTonePlayer.Factory playerFactory = new InCallTonePlayer.Factory(
-                callAudioRoutePeripheralAdapter, lock, toneGeneratorFactory, mediaPlayerFactory);
+                callAudioRoutePeripheralAdapter, lock, toneGeneratorFactory, mediaPlayerFactory,
+                () -> audioManager.getStreamVolume(AudioManager.STREAM_RING) > 0);
 
         SystemSettingsUtil systemSettingsUtil = new SystemSettingsUtil();
         RingtoneFactory ringtoneFactory = new RingtoneFactory(this, context);
@@ -477,6 +480,7 @@ public class CallsManager extends Call.ListenerBase
                 new ConnectionServiceRepository(mPhoneAccountRegistrar, mContext, mLock, this);
         mInCallWakeLockController = inCallWakeLockControllerFactory.create(context, this);
         mClockProxy = clockProxy;
+        mRoleManagerAdapter = roleManagerAdapter;
 
         mListeners.add(mInCallWakeLockController);
         mListeners.add(statusBarNotifier);
@@ -525,6 +529,10 @@ public class CallsManager extends Call.ListenerBase
 
     public CallerInfoLookupHelper getCallerInfoLookupHelper() {
         return mCallerInfoLookupHelper;
+    }
+
+    public RoleManagerAdapter getRoleManagerAdapter() {
+        return mRoleManagerAdapter;
     }
 
     @Override
@@ -580,9 +588,9 @@ public class CallsManager extends Call.ListenerBase
         filters.add(new DirectToVoicemailCallFilter(mCallerInfoLookupHelper));
         filters.add(new AsyncBlockCheckFilter(mContext, new BlockCheckerAdapter(),
                 mCallerInfoLookupHelper, null));
-        filters.add(new CallScreeningServiceFilter(mContext, this, mPhoneAccountRegistrar,
-            mDefaultDialerCache, new ParcelableCallUtils.Converter(), mLock,
-            new TelecomServiceImpl.SettingsSecureAdapterImpl()));
+        filters.add(new CallScreeningServiceController(mContext, this, mPhoneAccountRegistrar,
+                new ParcelableCallUtils.Converter(), mLock,
+                new TelecomServiceImpl.SettingsSecureAdapterImpl(), mCallerInfoLookupHelper));
         new IncomingCallFilter(mContext, this, incomingCall, mLock,
                 mTimeoutsAdapter, filters).performFiltering();
     }
@@ -3320,6 +3328,7 @@ public class CallsManager extends Call.ListenerBase
     public void onUserSwitch(UserHandle userHandle) {
         mCurrentUserHandle = userHandle;
         mMissedCallNotifier.setCurrentUserHandle(userHandle);
+        mRoleManagerAdapter.setCurrentUserHandle(userHandle);
         final UserManager userManager = UserManager.get(mContext);
         List<UserInfo> profiles = userManager.getEnabledProfiles(userHandle.getIdentifier());
         for (UserInfo profile : profiles) {
@@ -3606,6 +3615,14 @@ public class CallsManager extends Call.ListenerBase
             pw.println("mConnectionServiceRepository:");
             pw.increaseIndent();
             mConnectionServiceRepository.dump(pw);
+            pw.decreaseIndent();
+        }
+
+        if (mRoleManagerAdapter != null && mRoleManagerAdapter instanceof RoleManagerAdapterImpl) {
+            RoleManagerAdapterImpl impl = (RoleManagerAdapterImpl) mRoleManagerAdapter;
+            pw.println("mRoleManager:");
+            pw.increaseIndent();
+            impl.dump(pw);
             pw.decreaseIndent();
         }
     }

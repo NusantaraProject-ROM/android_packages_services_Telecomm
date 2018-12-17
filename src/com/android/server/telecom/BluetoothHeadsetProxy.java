@@ -43,9 +43,10 @@ public class BluetoothHeadsetProxy {
     }
 
     public void phoneStateChanged(int numActive, int numHeld, int callState, String number,
-            int type) {
+            int type, String name) {
 
-        mBluetoothHeadset.phoneStateChanged(numActive, numHeld, callState, number, type);
+        mBluetoothHeadset.phoneStateChanged(numActive, numHeld, callState, number, type,
+            name);
     }
 
     public List<BluetoothDevice> getConnectedDevices() {
@@ -83,8 +84,11 @@ public class BluetoothHeadsetProxy {
     public boolean isInbandRingingEnabled() {
         return mBluetoothHeadset.isInbandRingingEnabled();
     }
+<<<<<<< HEAD
 
     public BluetoothHeadset getBluetoothHeadsetObj() {
         return mBluetoothHeadset;
     }
+=======
+>>>>>>> d67dd1c0b69ea564dba8b9e1d237cd83dfbc137c
 }

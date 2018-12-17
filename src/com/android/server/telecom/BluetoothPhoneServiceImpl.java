@@ -768,10 +768,15 @@ public class BluetoothPhoneServiceImpl {
 
         String ringingAddress = null;
         int ringingAddressType = 128;
+        String ringingName = null;
         if (ringingCall != null && ringingCall.getHandle() != null) {
             ringingAddress = ringingCall.getHandle().getSchemeSpecificPart();
             if (ringingAddress != null) {
                 ringingAddressType = PhoneNumberUtils.toaFromString(ringingAddress);
+            }
+            ringingName = ringingCall.getCallerDisplayName();
+            if (TextUtils.isEmpty(ringingName)) {
+                ringingName = ringingCall.getName();
             }
         }
         if (ringingAddress == null) {
@@ -853,18 +858,21 @@ public class BluetoothPhoneServiceImpl {
                         "numHeld %s, " +
                         "callState %s, " +
                         "ringing number %s, " +
-                        "ringing type %s",
+                        "ringing type %s, " +
+                        "ringing name %s",
                         mNumActiveCalls,
                         mNumHeldCalls,
                         CALL_STATE_DIALING,
                         Log.pii(mRingingAddress),
-                        mRingingAddressType);
+                        mRingingAddressType,
+                        Log.pii(ringingName));
                 mBluetoothHeadset.phoneStateChanged(
                         mNumActiveCalls,
                         mNumHeldCalls,
                         CALL_STATE_DIALING,
                         mRingingAddress,
-                        mRingingAddressType);
+                        mRingingAddressType,
+                        ringingName);
             }
 
             Log.i(TAG, "updateHeadsetWithCallState " +
@@ -872,19 +880,22 @@ public class BluetoothPhoneServiceImpl {
                     "numHeld %s, " +
                     "callState %s, " +
                     "ringing number %s, " +
-                    "ringing type %s",
+                    "ringing type %s, " +
+                    "ringing name %s",
                     mNumActiveCalls,
                     mNumHeldCalls,
                     mBluetoothCallState,
                     Log.pii(mRingingAddress),
-                    mRingingAddressType);
+                    mRingingAddressType,
+                    Log.pii(ringingName));
 
             mBluetoothHeadset.phoneStateChanged(
                     mNumActiveCalls,
                     mNumHeldCalls,
                     mBluetoothCallState,
                     mRingingAddress,
-                    mRingingAddressType);
+                    mRingingAddressType,
+                    ringingName);
 
             mHeadsetUpdatedRecently = true;
         }

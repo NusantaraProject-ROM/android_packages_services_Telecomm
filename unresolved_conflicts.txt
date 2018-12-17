@@ -1,0 +1,6 @@
+# List of unresolved conflicts
+# Generated with `git ls-files --unmerged`
+
+100644 0f492dfec60ab969c9d8d0c753459bdf28b038cb 1	src/com/android/server/telecom/BluetoothHeadsetProxy.java
+100644 c46e412e394944499c08a5ed33b756af9a59ad5e 2	src/com/android/server/telecom/BluetoothHeadsetProxy.java
+100644 a43b3cd4c903b2dd938a799582a171bcab6da5ec 3	src/com/android/server/telecom/BluetoothHeadsetProxy.java
