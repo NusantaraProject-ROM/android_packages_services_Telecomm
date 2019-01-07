@@ -294,7 +294,7 @@ public class BluetoothRouteManager extends StateMachine {
                         }
                         break;
                     case BT_AUDIO_LOST:
-                        if (Objects.equals(mDeviceAddress, address)) {
+                        if (Objects.equals(mDeviceAddress, address) || address == null) {
                             Log.i(LOG_TAG, "Connection with device %s failed.",
                                     mDeviceAddress);
                             transitionToActualState();
@@ -404,7 +404,7 @@ public class BluetoothRouteManager extends StateMachine {
                         }
                         break;
                     case BT_AUDIO_LOST:
-                        if (Objects.equals(mDeviceAddress, address)) {
+                        if (Objects.equals(mDeviceAddress, address) || address == null) {
                             Log.i(LOG_TAG, "HFP connection with device %s lost.", mDeviceAddress);
                             transitionToActualState();
                         } else {

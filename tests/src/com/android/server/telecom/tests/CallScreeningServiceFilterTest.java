@@ -25,11 +25,13 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.graphics.drawable.Icon;
 import android.os.IBinder;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.provider.CallLog;
+import android.telecom.CallIdentification;
 import android.telecom.CallScreeningService;
 import android.telecom.ParcelableCall;
 import android.telecom.TelecomManager;
@@ -88,17 +90,20 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
         spy(new SettingsSecureAdapterFake());
 
     private static final String PKG_NAME = "com.android.services.telecom.tests";
+    private static final String APP_NAME = "TeleTestApp";
     private static final String CLS_NAME = "CallScreeningService";
     private static final ComponentName COMPONENT_NAME = new ComponentName(PKG_NAME, CLS_NAME);
     private static final String CALL_ID = "u89prgt9ps78y5";
     private static final String DEFAULT_DIALER_PACKAGE = "com.android.dialer";
     private static final ComponentName CARRIER_DEFINED_CALL_SCREENING = new ComponentName(
         "com.android.carrier", "com.android.carrier.callscreeningserviceimpl");
+    private static final String CARRIER_DEFINED_CALL_SCREENING_APP_NAME = "GMob";
     private static final ComponentName DEFAULT_DIALER_CALL_SCREENING = new ComponentName(
         "com.android.dialer", "com.android.dialer.callscreeningserviceimpl");
+    private static final String DEFAULT_DIALER_APP_NAME = "Dialer";
     private static final ComponentName USER_CHOSEN_CALL_SCREENING = new ComponentName(
         "com.android.userchosen", "com.android.userchosen.callscreeningserviceimpl");
-
+    private static final String USER_CHOSEN_CALL_SCREENING_APP_NAME = "UserChosen";
     private ResolveInfo mResolveInfo;
 
     private static final CallFilteringResult PASS_RESULT = new CallFilteringResult(
@@ -154,7 +159,7 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
     @SmallTest
     @Test
     public void testNoPackageName() {
-        mFilter.startCallScreeningFilter(mCall, mCallback, null);
+        mFilter.startCallScreeningFilter(mCall, mCallback, null, null);
         verify(mCallback).onCallScreeningFilterComplete(eq(mCall), eq(PASS_RESULT), eq(null));
     }
 
@@ -163,7 +168,7 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
     public void testNoResolveEntries() {
         when(mPackageManager.queryIntentServicesAsUser(nullable(Intent.class), anyInt(), anyInt()))
                 .thenReturn(Collections.emptyList());
-        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME);
+        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME, APP_NAME);
         verify(mCallback).onCallScreeningFilterComplete(eq(mCall), eq(PASS_RESULT), eq(PKG_NAME));
     }
 
@@ -171,7 +176,7 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
     @Test
     public void testBadResolveEntry() {
         mResolveInfo.serviceInfo = null;
-        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME);
+        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME, APP_NAME);
         verify(mCallback).onCallScreeningFilterComplete(eq(mCall), eq(PASS_RESULT), eq(PKG_NAME));
     }
 
@@ -179,7 +184,7 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
     @Test
     public void testPermissionlessFilterService() {
         mResolveInfo.serviceInfo.permission = null;
-        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME);
+        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME, APP_NAME);
         verify(mCallback).onCallScreeningFilterComplete(eq(mCall), eq(PASS_RESULT), eq(PKG_NAME));
     }
 
@@ -188,7 +193,7 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
     public void testContextFailToBind() {
         when(mContext.bindServiceAsUser(nullable(Intent.class), nullable(ServiceConnection.class),
                 anyInt(), eq(UserHandle.CURRENT))).thenReturn(false);
-        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME);
+        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME, APP_NAME);
         verify(mCallback).onCallScreeningFilterComplete(eq(mCall), eq(PASS_RESULT), eq(PKG_NAME));
     }
 
@@ -197,7 +202,7 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
     public void testExceptionInScreeningService() throws Exception {
         doThrow(new RemoteException()).when(mCallScreeningService).screenCall(
                 nullable(ICallScreeningAdapter.class), nullable(ParcelableCall.class));
-        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME);
+        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME, APP_NAME);
         ServiceConnection serviceConnection = verifyBindingIntent();
         serviceConnection.onServiceConnected(COMPONENT_NAME, mBinder);
         verify(mCallback).onCallScreeningFilterComplete(eq(mCall), eq(PASS_RESULT), eq(PKG_NAME));
@@ -206,7 +211,7 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
     @SmallTest
     @Test
     public void testAllowCall() throws Exception {
-        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME);
+        mFilter.startCallScreeningFilter(mCall, mCallback, PKG_NAME, APP_NAME);
         ServiceConnection serviceConnection = verifyBindingIntent();
         serviceConnection.onServiceConnected(COMPONENT_NAME, mBinder);
         ICallScreeningAdapter csAdapter = getCallScreeningAdapter();
@@ -224,7 +229,8 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
         when(mTelecomManager.getDefaultDialerPackage()).thenReturn(DEFAULT_DIALER_PACKAGE);
 
         mFilter.startCallScreeningFilter(mCall, mCallback,
-                CARRIER_DEFINED_CALL_SCREENING.getPackageName());
+                CARRIER_DEFINED_CALL_SCREENING.getPackageName(),
+                CARRIER_DEFINED_CALL_SCREENING_APP_NAME);
         ServiceConnection serviceConnection = verifyBindingIntent();
         serviceConnection.onServiceConnected(COMPONENT_NAME, mBinder);
         ICallScreeningAdapter csAdapter = getCallScreeningAdapter();
@@ -240,7 +246,7 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
                 false, // shouldAddToCallLog
                 true, // shouldShowNotification
                 CallLog.Calls.BLOCK_REASON_CALL_SCREENING_SERVICE, //callBlockReason
-                CARRIER_DEFINED_CALL_SCREENING.getPackageName(), //callScreeningAppName
+                CARRIER_DEFINED_CALL_SCREENING_APP_NAME, //callScreeningAppName
                 CARRIER_DEFINED_CALL_SCREENING.flattenToString() //callScreeningComponentName
         )), eq(CARRIER_DEFINED_CALL_SCREENING.getPackageName()));
     }
@@ -255,7 +261,8 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
         when(mTelecomManager.getDefaultDialerPackage()).thenReturn(DEFAULT_DIALER_PACKAGE);
 
         mFilter.startCallScreeningFilter(mCall, mCallback,
-                DEFAULT_DIALER_CALL_SCREENING.getPackageName());
+                DEFAULT_DIALER_CALL_SCREENING.getPackageName(),
+                DEFAULT_DIALER_APP_NAME);
         ServiceConnection serviceConnection = verifyBindingIntent();
         serviceConnection.onServiceConnected(COMPONENT_NAME, mBinder);
         ICallScreeningAdapter csAdapter = getCallScreeningAdapter();
@@ -271,7 +278,7 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
             true, // shouldAddToCallLog
             true, // shouldShowNotification
             CallLog.Calls.BLOCK_REASON_CALL_SCREENING_SERVICE, //callBlockReason
-            DEFAULT_DIALER_CALL_SCREENING.getPackageName(), //callScreeningAppName
+            DEFAULT_DIALER_APP_NAME, //callScreeningAppName
             DEFAULT_DIALER_CALL_SCREENING.flattenToString() //callScreeningComponentName
         )), eq(DEFAULT_DIALER_CALL_SCREENING.getPackageName()));
     }
@@ -286,7 +293,8 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
         when(mTelecomManager.getDefaultDialerPackage()).thenReturn(DEFAULT_DIALER_PACKAGE);
 
         mFilter.startCallScreeningFilter(mCall, mCallback,
-                USER_CHOSEN_CALL_SCREENING.getPackageName());
+                USER_CHOSEN_CALL_SCREENING.getPackageName(),
+                USER_CHOSEN_CALL_SCREENING_APP_NAME);
         ServiceConnection serviceConnection = verifyBindingIntent();
         serviceConnection.onServiceConnected(COMPONENT_NAME, mBinder);
         ICallScreeningAdapter csAdapter = getCallScreeningAdapter();
@@ -302,9 +310,40 @@ public class CallScreeningServiceFilterTest extends TelecomTestCase {
             true, // shouldAddToCallLog
             true, // shouldShowNotification
             CallLog.Calls.BLOCK_REASON_CALL_SCREENING_SERVICE, //callBlockReason
-            USER_CHOSEN_CALL_SCREENING.getPackageName(), //callScreeningAppName
+            USER_CHOSEN_CALL_SCREENING_APP_NAME, //callScreeningAppName
             USER_CHOSEN_CALL_SCREENING.flattenToString() //callScreeningComponentName
         )), eq(USER_CHOSEN_CALL_SCREENING.getPackageName()));
+    }
+
+    /**
+     * Verify that call identification information provided via a {@link CallScreeningService} is
+     * propagated to the Telecom call.
+     * @throws Exception
+     */
+    @SmallTest
+    @Test
+    public void testProvideCallIdentification() throws Exception {
+        mResolveInfo.serviceInfo.packageName = USER_CHOSEN_CALL_SCREENING.getPackageName();
+        mResolveInfo.serviceInfo.name = USER_CHOSEN_CALL_SCREENING.getClassName();
+        when(TelecomManager.from(mContext)).thenReturn(mTelecomManager);
+        when(mTelecomManager.getDefaultDialerPackage()).thenReturn(DEFAULT_DIALER_PACKAGE);
+
+        mFilter.startCallScreeningFilter(mCall, mCallback,
+                USER_CHOSEN_CALL_SCREENING.getPackageName(),
+                USER_CHOSEN_CALL_SCREENING_APP_NAME);
+        ServiceConnection serviceConnection = verifyBindingIntent();
+        serviceConnection.onServiceConnected(COMPONENT_NAME, mBinder);
+        ICallScreeningAdapter csAdapter = getCallScreeningAdapter();
+
+        CallIdentification callIdentification = new CallIdentification.Builder()
+                .setNuisanceConfidence(CallIdentification.CONFIDENCE_NOT_NUISANCE)
+                .setName("Joe's Laundry")
+                .setDescription("1234 DirtySocks Lane")
+                .setDetails("Open 24 hrs")
+                .build();
+        csAdapter.provideCallIdentification(CALL_ID, callIdentification);
+
+        verify(mCall).setCallIdentification(eq(callIdentification));
     }
 
     private ServiceConnection verifyBindingIntent() {

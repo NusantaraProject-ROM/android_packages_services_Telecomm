@@ -332,12 +332,17 @@ public class BasicCallTests extends TelecomSystemTest {
         int startingNumCalls = mInCallServiceFixtureX.mCallById.size();
         String callId = startOutgoingPhoneCallWithNoPhoneAccount("650-555-1212",
                 mConnectionServiceFixtureA);
+        mTelecomSystem.getCallsManager().getLatestPreAccountSelectionFuture().join();
+        waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);
         assertEquals(Call.STATE_SELECT_PHONE_ACCOUNT,
                 mInCallServiceFixtureX.getCall(callId).getState());
         assertEquals(Call.STATE_SELECT_PHONE_ACCOUNT,
                 mInCallServiceFixtureY.getCall(callId).getState());
         mInCallServiceFixtureX.mInCallAdapter.phoneAccountSelected(callId,
                 mPhoneAccountA0.getAccountHandle(), false);
+        waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);
+        waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);
+        verifyAndProcessOutgoingCallBroadcast(mPhoneAccountA0.getAccountHandle());
 
         IdPair ids = outgoingCallPhoneAccountSelected(mPhoneAccountA0.getAccountHandle(),
                 startingNumConnections, startingNumCalls, mConnectionServiceFixtureA);
@@ -1111,6 +1116,7 @@ public class BasicCallTests extends TelecomSystemTest {
      */
     @LargeTest
     @Test
+    @FlakyTest
     public void testUnmuteDuringEmergencyCall() throws Exception {
         // Make an outgoing call and turn ON mute.
         IdPair outgoingCall = startAndMakeActiveOutgoingCall("650-555-1212",

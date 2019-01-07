@@ -58,7 +58,6 @@ import android.util.EventLog;
 
 import com.android.internal.telecom.ITelecomService;
 import com.android.internal.util.IndentingPrintWriter;
-import com.android.server.telecom.components.ChangeDefaultCallScreeningApp;
 import com.android.server.telecom.components.UserCallIntentProcessorFactory;
 import com.android.server.telecom.settings.BlockedNumbersActivity;
 
@@ -1346,147 +1345,6 @@ public class TelecomServiceImpl {
             }
         }
 
-        /**
-         * @see android.telecom.TelecomManager#requestChangeDefaultCallScreeningApp
-         */
-        @Override
-        public void requestChangeDefaultCallScreeningApp(ComponentName componentName, String
-            callingPackage) {
-            try {
-                Log.startSession("TSI.rCDCSA");
-                synchronized (mLock) {
-                    long token = Binder.clearCallingIdentity();
-                    try {
-                        if (callingPackage.equals(componentName.getPackageName())) {
-                            final Intent intent = new Intent(mContext,
-                                ChangeDefaultCallScreeningApp.class);
-                            intent.putExtra(
-                                TelecomManager.EXTRA_DEFAULT_CALL_SCREENING_APP_COMPONENT_NAME,
-                                componentName.flattenToString());
-                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            mContext.startActivity(intent);
-                        } else {
-                            throw new SecurityException(
-                                "calling package name does't match the package of the passed "
-                                    + "component name.");
-                        }
-                    } finally {
-                        Binder.restoreCallingIdentity(token);
-                    }
-                }
-            } finally {
-                Log.endSession();
-            }
-        }
-
-        /**
-         * @see android.telecom.TelecomManager#isDefaultCallScreeningApp
-         */
-        @Override
-        public boolean isDefaultCallScreeningApp(ComponentName componentName) {
-            try {
-                Log.startSession("TSI.iDCSA");
-                synchronized (mLock) {
-                    if (componentName == null) {
-                        return false;
-                    }
-                    mAppOpsManager
-                        .checkPackage(Binder.getCallingUid(), componentName.getPackageName());
-
-                    long token = Binder.clearCallingIdentity();
-                    try {
-                        final String defaultPackage = mSettingsSecureAdapter
-                            .getStringForUser(mContext.getContentResolver(),
-                                Settings.Secure.CALL_SCREENING_DEFAULT_COMPONENT,
-                                UserHandle.USER_CURRENT);
-
-                        if (!TextUtils.isEmpty(defaultPackage) && !TextUtils
-                            .isEmpty(componentName.flattenToString()) && TextUtils
-                            .equals(defaultPackage, componentName.flattenToString())) {
-                            return true;
-                        } else {
-                            Log.d(this,
-                                "Provided package name is not the current default Call Screening application.");
-                            return false;
-                        }
-                    } finally {
-                        Binder.restoreCallingIdentity(token);
-                    }
-                }
-            } finally {
-                Log.endSession();
-            }
-        }
-
-        /**
-         * @see android.telecom.TelecomManager#setDefaultCallScreeningApp
-         */
-        @Override
-        public void setDefaultCallScreeningApp(ComponentName componentName) {
-            try {
-                Log.startSession("TSI.sDCSA");
-                enforcePermission(MODIFY_PHONE_STATE);
-                enforcePermission(WRITE_SECURE_SETTINGS);
-                synchronized (mLock) {
-                    long token = Binder.clearCallingIdentity();
-                    try {
-                        try {
-                            mContext.getPackageManager().getApplicationInfo(
-                                componentName.getPackageName(), 0);
-                        } catch (PackageManager.NameNotFoundException e) {
-                            throw new IllegalArgumentException(
-                                "the specified package name does't exist componentName = " +
-                                    componentName);
-                        }
-
-                        Intent intent = new Intent(CallScreeningService.SERVICE_INTERFACE)
-                            .setPackage(componentName.getPackageName());
-                        List<ResolveInfo> entries = mContext.getPackageManager()
-                            .queryIntentServicesAsUser(intent, 0,
-                                mCallsManager.getCurrentUserHandle().getIdentifier());
-                        if (entries.isEmpty()) {
-                            throw new IllegalArgumentException(
-                                "The specified package name doesn't have call screening services");
-                        }
-
-                        try {
-                            ServiceInfo serviceInfo = mContext.getPackageManager().getServiceInfo(
-                                componentName, 0);
-                            if (!Manifest.permission.BIND_SCREENING_SERVICE.equals(serviceInfo
-                                .permission)) {
-                                throw new IllegalArgumentException(
-                                    "The passed component doesn't require " +
-                                        "BIND_SCREENING_SERVICE permission");
-                            }
-
-                        } catch (PackageManager.NameNotFoundException e) {
-                            throw new IllegalArgumentException(
-                                "the specified component name does't exist componentName = "
-                                    + componentName);
-                        }
-
-                        final String oldComponentName = mSettingsSecureAdapter
-                            .getStringForUser(mContext.getContentResolver(),
-                                Settings.Secure.CALL_SCREENING_DEFAULT_COMPONENT,
-                                UserHandle.USER_CURRENT);
-
-                        broadcastCallScreeningAppChangedIntent(oldComponentName, false);
-
-                        mSettingsSecureAdapter.putStringForUser(mContext.getContentResolver(),
-                            Settings.Secure.CALL_SCREENING_DEFAULT_COMPONENT,
-                            componentName.flattenToString(), UserHandle.USER_CURRENT);
-
-                        broadcastCallScreeningAppChangedIntent(componentName.flattenToString(),
-                            true);
-                    } finally {
-                        Binder.restoreCallingIdentity(token);
-                    }
-                }
-            } finally {
-                Log.endSession();
-            }
-        }
-
         @Override
         public TelecomAnalytics dumpCallAnalytics() {
             try {
@@ -1669,6 +1527,28 @@ public class TelecomServiceImpl {
         }
 
         @Override
+        public void setTestDefaultCallRedirectionApp(String packageName) {
+            try {
+                Log.startSession("TSI.sTDCRA");
+                enforceModifyPermission();
+                if (!Build.IS_USERDEBUG) {
+                    throw new SecurityException("Test-only API.");
+                }
+                synchronized (mLock) {
+                    long token = Binder.clearCallingIdentity();
+                    try {
+                        mCallsManager.getRoleManagerAdapter().setTestDefaultCallRedirectionApp(
+                                packageName);
+                    } finally {
+                        Binder.restoreCallingIdentity(token);
+                    }
+                }
+            } finally {
+                Log.endSession();
+            }
+        }
+
+        @Override
         public void setTestDefaultCallScreeningApp(String packageName) {
             try {
                 Log.startSession("TSI.sTDCSA");
@@ -1727,6 +1607,23 @@ public class TelecomServiceImpl {
                     } finally {
                         Binder.restoreCallingIdentity(token);
                     }
+                }
+            } finally {
+                Log.endSession();
+            }
+        }
+
+        @Override
+        public void setTestPhoneAcctSuggestionComponent(String flattenedComponentName) {
+            try {
+                Log.startSession("TSI.sPASA");
+                enforceModifyPermission();
+                if (Binder.getCallingUid() != Process.SHELL_UID
+                        && Binder.getCallingUid() != Process.ROOT_UID) {
+                    throw new SecurityException("Shell-only API.");
+                }
+                synchronized (mLock) {
+                    PhoneAccountSuggestionHelper.setOverrideServiceName(flattenedComponentName);
                 }
             } finally {
                 Log.endSession();
