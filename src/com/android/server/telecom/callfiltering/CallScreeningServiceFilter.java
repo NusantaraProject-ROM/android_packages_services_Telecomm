@@ -29,8 +29,10 @@ import android.os.RemoteException;
 import android.os.UserHandle;
 import android.provider.CallLog;
 import android.provider.Settings;
+import android.telecom.CallIdentification;
 import android.telecom.CallScreeningService;
 import android.telecom.Log;
+import android.telecom.ParcelableCall;
 import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
 import android.text.TextUtils;
@@ -136,7 +138,7 @@ public class CallScreeningServiceFilter {
                                 isServiceRequestingLogging, //shouldAddToCallLog
                                 shouldShowNotification, // shouldShowNotification
                                 CallLog.Calls.BLOCK_REASON_CALL_SCREENING_SERVICE, //callBlockReason
-                                componentName.getPackageName(), //callScreeningAppName
+                                mAppName, //callScreeningAppName
                                 componentName.flattenToString() //callScreeningComponentName
                         );
                     } else {
@@ -149,10 +151,28 @@ public class CallScreeningServiceFilter {
                 Log.endSession();
             }
         }
+
+        @Override
+        public void provideCallIdentification(String callId,
+                CallIdentification callIdentification) {
+            Log.startSession("CSCR.pCI");
+            long token = Binder.clearCallingIdentity();
+            try {
+                synchronized (mTelecomLock) {
+                    if (mCall != null && mCall.getId().equals(callId)) {
+                        callIdentification.setCallScreeningAppName(mAppName);
+                        callIdentification.setCallScreeningPackageName(mPackageName);
+                        mCall.setCallIdentification(callIdentification);
+                    }
+                }
+            } finally {
+                Binder.restoreCallingIdentity(token);
+                Log.endSession();
+            }
+        }
     }
 
     private final Context mContext;
-    private final PhoneAccountRegistrar mPhoneAccountRegistrar;
     private final CallsManager mCallsManager;
     private final ParcelableCallUtils.Converter mParcelableCallUtilsConverter;
     private final TelecomSystem.SyncRoot mTelecomLock;
@@ -163,6 +183,7 @@ public class CallScreeningServiceFilter {
     private ICallScreeningService mService;
     private ServiceConnection mConnection;
     private String mPackageName;
+    private String mAppName;
     private boolean mHasFinished = false;
 
     private CallFilteringResult mResult = new CallFilteringResult(
@@ -180,7 +201,6 @@ public class CallScreeningServiceFilter {
             TelecomSystem.SyncRoot lock,
             SettingsSecureAdapter settingsSecureAdapter) {
         mContext = context;
-        mPhoneAccountRegistrar = phoneAccountRegistrar;
         mCallsManager = callsManager;
         mParcelableCallUtilsConverter = parcelableCallUtilsConverter;
         mTelecomLock = lock;
@@ -189,7 +209,8 @@ public class CallScreeningServiceFilter {
 
     public void startCallScreeningFilter(Call call,
                                          CallScreeningFilterResultCallback callback,
-                                         String packageName) {
+                                         String packageName,
+                                         String appName) {
         if (mHasFinished) {
             Log.w(this, "Attempting to reuse CallScreeningServiceFilter. Ignoring.");
             return;
@@ -198,6 +219,7 @@ public class CallScreeningServiceFilter {
         mCall = call;
         mCallback = callback;
         mPackageName = packageName;
+        mAppName = appName;
         if (!bindService()) {
             Log.i(this, "Could not bind to call screening service");
             finishCallScreening();
@@ -268,11 +290,9 @@ public class CallScreeningServiceFilter {
     private void onServiceBound(ICallScreeningService service) {
         mService = service;
         try {
+            // Important: Only send a minimal subset of the call to the screening service.
             mService.screenCall(new CallScreeningAdapter(),
-                    mParcelableCallUtilsConverter.toParcelableCall(
-                            mCall,
-                            false, /* includeVideoProvider */
-                            mPhoneAccountRegistrar));
+                    mParcelableCallUtilsConverter.toParcelableCallForScreening(mCall));
         } catch (RemoteException e) {
             Log.e(this, e, "Failed to set the call screening adapter.");
             finishCallScreening();

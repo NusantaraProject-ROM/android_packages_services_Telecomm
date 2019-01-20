@@ -29,7 +29,6 @@ import com.android.server.telecom.CallAudioManager.AudioServiceFactory;
 import com.android.server.telecom.DefaultDialerCache.DefaultDialerManagerAdapter;
 
 import android.Manifest;
-import android.app.role.RoleManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -197,7 +196,8 @@ public class TelecomSystem {
             IncomingCallNotifier incomingCallNotifier,
             InCallTonePlayer.ToneGeneratorFactory toneGeneratorFactory,
             CallAudioRouteStateMachine.Factory callAudioRouteStateMachineFactory,
-            ClockProxy clockProxy) {
+            ClockProxy clockProxy,
+            RoleManagerAdapter roleManagerAdapter) {
         mContext = context.getApplicationContext();
         LogUtils.initLogging(mContext);
         DefaultDialerManagerAdapter defaultDialerAdapter =
@@ -244,6 +244,10 @@ public class TelecomSystem {
         mMissedCallNotifier = missedCallNotifierImplFactory
                 .makeMissedCallNotifierImpl(mContext, mPhoneAccountRegistrar, defaultDialerCache);
 
+        CallerInfoLookupHelper callerInfoLookupHelper =
+                new CallerInfoLookupHelper(context, callerInfoAsyncQueryFactory,
+                        mContactsAsyncHelper, mLock);
+
         EmergencyCallHelper emergencyCallHelper = new EmergencyCallHelper(mContext,
                 mContext.getResources().getString(R.string.ui_default_package), timeoutsAdapter);
 
@@ -258,14 +262,10 @@ public class TelecomSystem {
             }
         };
 
-        RoleManagerAdapter roleManagerAdapter = new RoleManagerAdapterImpl(
-                (RoleManager) mContext.getSystemService(Context.ROLE_SERVICE));
-
         mCallsManager = new CallsManager(
                 mContext,
                 mLock,
-                mContactsAsyncHelper,
-                callerInfoAsyncQueryFactory,
+                callerInfoLookupHelper,
                 mMissedCallNotifier,
                 mPhoneAccountRegistrar,
                 headsetMediaButtonFactory,

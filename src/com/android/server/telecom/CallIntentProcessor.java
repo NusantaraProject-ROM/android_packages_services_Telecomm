@@ -12,6 +12,7 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.telecom.DefaultDialerManager;
 import android.telecom.Log;
+import android.telecom.Logging.Session;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
@@ -20,7 +21,10 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.widget.Toast;
 
+import java.util.concurrent.CompletableFuture;
+
 import org.codeaurora.ims.QtiCallConstants;
+
 /**
  * Single point of entry for all outgoing and incoming calls.
  * {@link com.android.server.telecom.components.UserCallIntentProcessor} serves as a trampoline that
@@ -178,13 +182,21 @@ public class CallIntentProcessor {
         UserHandle initiatingUser = intent.getParcelableExtra(KEY_INITIATING_USER);
 
         // Send to CallsManager to ensure the InCallUI gets kicked off before the broadcast returns
-        Call call = callsManager
+        CompletableFuture<Call> callFuture = callsManager
                 .startOutgoingCall(handle, phoneAccountHandle, clientExtras, initiatingUser,
                         intent, callingPackage);
 
-        if (call != null) {
-            sendNewOutgoingCallIntent(context, call, callsManager, intent);
-        }
+        final Session logSubsession = Log.createSubsession();
+        callFuture.thenAccept((call) -> {
+            if (call != null) {
+                Log.continueSession(logSubsession, "CIP.sNOCI");
+                try {
+                    sendNewOutgoingCallIntent(context, call, callsManager, intent);
+                } finally {
+                    Log.endSession();
+                }
+            }
+        });
     }
 
     static void sendNewOutgoingCallIntent(Context context, Call call, CallsManager callsManager,

@@ -32,6 +32,7 @@ import android.os.SystemClock;
 import android.os.Trace;
 import android.provider.ContactsContract.Contacts;
 import android.telecom.CallAudioState;
+import android.telecom.CallIdentification;
 import android.telecom.Conference;
 import android.telecom.ConnectionService;
 import android.telecom.DisconnectCause;
@@ -141,6 +142,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                                  Bundle extras, boolean isLegacy);
         void onHandoverFailed(Call call, int error);
         void onHandoverComplete(Call call);
+        void onCallIdentificationChanged(Call call);
     }
 
     public abstract static class ListenerBase implements Listener {
@@ -219,6 +221,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         public void onHandoverFailed(Call call, int error) {}
         @Override
         public void onHandoverComplete(Call call) {}
+        @Override
+        public void onCallIdentificationChanged(Call call) {}
     }
 
     private final CallerInfoLookupHelper.OnQueryCompleteListener mCallerInfoQueryListener =
@@ -530,8 +534,13 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     private boolean mIsUsingCallFiltering = false;
 
     /**
+     * {@link CallIdentification} provided by a {@link android.telecom.CallScreeningService}.
+     */
+    private CallIdentification mCallIdentification = null;
+
+    /**
      * Persists the specified parameters and initializes the new instance.
-     *  @param context The context.
+     * @param context The context.
      * @param repository The connection service repository.
      * @param handle The handle to dial.
      * @param gatewayInfo Gateway information to use for the call.
@@ -551,8 +560,6 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             CallsManager callsManager,
             TelecomSystem.SyncRoot lock,
             ConnectionServiceRepository repository,
-            ContactsAsyncHelper contactsAsyncHelper,
-            CallerInfoAsyncQueryFactory callerInfoAsyncQueryFactory,
             PhoneNumberUtilsAdapter phoneNumberUtilsAdapter,
             Uri handle,
             GatewayInfo gatewayInfo,
@@ -587,7 +594,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
     /**
      * Persists the specified parameters and initializes the new instance.
-     *  @param context The context.
+     * @param context The context.
      * @param repository The connection service repository.
      * @param handle The handle to dial.
      * @param gatewayInfo Gateway information to use for the call.
@@ -609,8 +616,6 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             CallsManager callsManager,
             TelecomSystem.SyncRoot lock,
             ConnectionServiceRepository repository,
-            ContactsAsyncHelper contactsAsyncHelper,
-            CallerInfoAsyncQueryFactory callerInfoAsyncQueryFactory,
             PhoneNumberUtilsAdapter phoneNumberUtilsAdapter,
             Uri handle,
             GatewayInfo gatewayInfo,
@@ -622,8 +627,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             long connectTimeMillis,
             long connectElapsedTimeMillis,
             ClockProxy clockProxy) {
-        this(callId, context, callsManager, lock, repository, contactsAsyncHelper,
-                callerInfoAsyncQueryFactory, phoneNumberUtilsAdapter, handle, gatewayInfo,
+        this(callId, context, callsManager, lock, repository,
+                phoneNumberUtilsAdapter, handle, gatewayInfo,
                 connectionManagerPhoneAccountHandle, targetPhoneAccountHandle, callDirection,
                 shouldAttachToExistingConnection, isConference, clockProxy);
 
@@ -677,6 +682,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             mCallerInfo.cachedPhotoIcon = null;
             mCallerInfo.cachedPhoto = null;
         }
+        closeRttStreams();
 
         Log.addEvent(this, LogUtils.Events.DESTROYED);
     }
@@ -3140,5 +3146,28 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
     public void setIsUsingCallFiltering(boolean isUsingCallFiltering) {
         mIsUsingCallFiltering = isUsingCallFiltering;
+    }
+
+    /**
+     * Update the {@link CallIdentification} for a call.
+     * @param callIdentification the {@link CallIdentification}.
+     */
+    public void setCallIdentification(CallIdentification callIdentification) {
+        if (callIdentification != null) {
+            Log.addEvent(this, LogUtils.Events.CALL_IDENTIFICATION_SET,
+                    callIdentification.getCallScreeningPackageName());
+        }
+        mCallIdentification = callIdentification;
+
+        for (Listener l : mListeners) {
+            l.onCallIdentificationChanged(this);
+        }
+    }
+
+    /**
+     * @return Call identification returned by a {@link android.telecom.CallScreeningService}.
+     */
+    public CallIdentification getCallIdentification() {
+        return mCallIdentification;
     }
 }

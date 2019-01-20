@@ -26,14 +26,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class RoleManagerAdapterImpl implements RoleManagerAdapter {
-    // TODO: replace with actual role manager const.
-    private static final String ROLE_CAR_MODE_DIALER = "android.app.role.ROLE_CAR_MODE_DIALER";
-    // TODO: replace with actual role manager const.
-    private static final String ROLE_CALL_SCREENING = "android.app.role.CALL_SCREENING";
-    // TODO: replace with actual role manager const.
+    private static final String ROLE_CALL_REDIRECTION_APP = "android.app.role.PROXY_CALLING_APP";
+    private static final String ROLE_CAR_MODE_DIALER = "android.app.role.CAR_MODE_DIALER_APP";
+    private static final String ROLE_CALL_SCREENING = "android.app.role.CALL_SCREENING_APP";
     private static final String ROLE_CALL_COMPANION_APP =
-            "android.app.role.ROLE_CALL_COMPANION_APP";
+            "android.app.role.CALL_COMPANION_APP";
 
+    private String mOverrideDefaultCallRedirectionApp = null;
     private String mOverrideDefaultCallScreeningApp = null;
     private String mOverrideDefaultCarModeApp = null;
     private List<String> mOverrideCallCompanionApps = new ArrayList<>();
@@ -42,6 +41,19 @@ public class RoleManagerAdapterImpl implements RoleManagerAdapter {
 
     public RoleManagerAdapterImpl(RoleManager roleManager) {
         mRoleManager = roleManager;
+    }
+
+    @Override
+    public String getDefaultCallRedirectionApp() {
+        if (mOverrideDefaultCallRedirectionApp != null) {
+            return mOverrideDefaultCallRedirectionApp;
+        }
+        return getRoleManagerCallRedirectionApp();
+    }
+
+    @Override
+    public void setTestDefaultCallRedirectionApp(String packageName) {
+        mOverrideDefaultCallRedirectionApp = packageName;
     }
 
     @Override
@@ -59,7 +71,9 @@ public class RoleManagerAdapterImpl implements RoleManagerAdapter {
 
     @Override
     public List<String> getCallCompanionApps() {
-        List<String> callCompanionApps = getRoleManagerCallCompanionApps();
+        List<String> callCompanionApps = new ArrayList<>();
+        // List from RoleManager is not resizable. AbstractList.add action is not supported.
+        callCompanionApps.addAll(getRoleManagerCallCompanionApps());
         callCompanionApps.addAll(mOverrideCallCompanionApps);
         return callCompanionApps;
     }
@@ -113,12 +127,30 @@ public class RoleManagerAdapterImpl implements RoleManagerAdapter {
         return mRoleManager.getRoleHoldersAsUser(ROLE_CALL_COMPANION_APP, mCurrentUserHandle);
     }
 
+    private String getRoleManagerCallRedirectionApp() {
+        List<String> roleHolders = mRoleManager.getRoleHoldersAsUser(ROLE_CALL_REDIRECTION_APP,
+                mCurrentUserHandle);
+        if (roleHolders == null || roleHolders.isEmpty()) {
+            return null;
+        }
+        return roleHolders.get(0);
+    }
+
     /**
      * Dumps the state of the {@link InCallController}.
      *
      * @param pw The {@code IndentingPrintWriter} to write the state to.
      */
     public void dump(IndentingPrintWriter pw) {
+        pw.print("DefaultCallRedirectionApp: ");
+        if (mOverrideDefaultCallRedirectionApp != null) {
+            pw.print("(override ");
+            pw.print(mOverrideDefaultCallRedirectionApp);
+            pw.print(") ");
+            pw.print(getRoleManagerCallRedirectionApp());
+        }
+        pw.println();
+
         pw.print("DefaultCallScreeningApp: ");
         if (mOverrideDefaultCallScreeningApp != null) {
             pw.print("(override ");
@@ -129,7 +161,7 @@ public class RoleManagerAdapterImpl implements RoleManagerAdapter {
         pw.println();
 
         pw.print("DefaultCarModeDialerApp: ");
-        if (mOverrideDefaultCallScreeningApp != null) {
+        if (mOverrideDefaultCarModeApp != null) {
             pw.print("(override ");
             pw.print(mOverrideDefaultCarModeApp);
             pw.print(") ");
@@ -138,7 +170,7 @@ public class RoleManagerAdapterImpl implements RoleManagerAdapter {
         pw.println();
 
         pw.print("DefaultCallCompanionApps: ");
-        if (mOverrideDefaultCallScreeningApp != null) {
+        if (mOverrideCallCompanionApps != null) {
             pw.print("(override ");
             pw.print(mOverrideCallCompanionApps.stream().collect(Collectors.joining(", ")));
             pw.print(") ");
