@@ -17,7 +17,11 @@
 package com.android.server.telecom;
 
 import android.app.role.RoleManager;
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.UserHandle;
+import android.telecom.Log;
 
 import com.android.internal.util.IndentingPrintWriter;
 
@@ -26,20 +30,21 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class RoleManagerAdapterImpl implements RoleManagerAdapter {
-    private static final String ROLE_CALL_REDIRECTION_APP = "android.app.role.PROXY_CALLING_APP";
-    private static final String ROLE_CAR_MODE_DIALER = "android.app.role.CAR_MODE_DIALER_APP";
-    private static final String ROLE_CALL_SCREENING = "android.app.role.CALL_SCREENING_APP";
-    private static final String ROLE_CALL_COMPANION_APP =
-            "android.app.role.CALL_COMPANION_APP";
+    private static final String ROLE_CALL_REDIRECTION_APP = RoleManager.ROLE_PROXY_CALLING_APP;
+    private static final String ROLE_CAR_MODE_DIALER = RoleManager.ROLE_CAR_MODE_DIALER_APP;
+    private static final String ROLE_CALL_SCREENING = RoleManager.ROLE_CALL_SCREENING_APP;
+    private static final String ROLE_CALL_COMPANION_APP = RoleManager.ROLE_CALL_COMPANION_APP;
 
     private String mOverrideDefaultCallRedirectionApp = null;
     private String mOverrideDefaultCallScreeningApp = null;
     private String mOverrideDefaultCarModeApp = null;
     private List<String> mOverrideCallCompanionApps = new ArrayList<>();
+    private Context mContext;
     private RoleManager mRoleManager;
     private UserHandle mCurrentUserHandle;
 
-    public RoleManagerAdapterImpl(RoleManager roleManager) {
+    public RoleManagerAdapterImpl(Context context, RoleManager roleManager) {
+        mContext = context;
         mRoleManager = roleManager;
     }
 
@@ -134,6 +139,29 @@ public class RoleManagerAdapterImpl implements RoleManagerAdapter {
             return null;
         }
         return roleHolders.get(0);
+    }
+
+    /**
+     * Returns the application label that corresponds to the given package name
+     *
+     * @param packageName A valid package name.
+     *
+     * @return Application label for the given package name, or null if not found.
+     */
+    @Override
+    public String getApplicationLabelForPackageName(String packageName) {
+        PackageManager pm = mContext.getPackageManager();
+        ApplicationInfo info = null;
+        try {
+            info = pm.getApplicationInfo(packageName, 0);
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.d(this, "Application info not found for packageName " + packageName);
+        }
+        if (info == null) {
+            return packageName;
+        } else {
+            return info.loadLabel(pm).toString();
+        }
     }
 
     /**
