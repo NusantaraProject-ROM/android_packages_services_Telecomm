@@ -83,6 +83,8 @@
     <string name="answering_ends_other_managed_video_call" msgid="1585423762458248435">"Cevapladığınızda, devam eden görüntülü görüşme sona erecek"</string>
     <string name="answer_incoming_call" msgid="4140530013111794587">"Cevapla"</string>
     <string name="decline_incoming_call" msgid="806026168661598368">"Reddet"</string>
+    <!-- no translation found for cant_call_due_to_no_supported_service (5128162419227548372) -->
+    <skip />
     <string name="cant_call_due_to_ongoing_call" msgid="4952615196237854748">"Devam eden <xliff:g id="OTHER_CALL">%1$s</xliff:g> çağrınız nedeniyle telefon araması yapılamıyor."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="1380804892363503856">"Devam eden <xliff:g id="OTHER_CALL">%1$s</xliff:g> çağrılarınız nedeniyle telefon araması yapılamıyor."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="149091978697302211">"Başka bir uygulamada devam eden çağrınız nedeniyle telefon araması yapılamıyor."</string>
@@ -90,10 +92,8 @@
     <string name="notification_channel_missed_call" msgid="8727062678632713146">"Cevapsız çağrılar"</string>
     <string name="notification_channel_call_blocking" msgid="2943358779746676070">"Çağrı Engelleme"</string>
     <string name="alert_outgoing_call" msgid="982908156825958001">"Bu çağrıyı yaptığınızda <xliff:g id="OTHER_APP">%1$s</xliff:g> çağrınız sona erecek."</string>
-    <!-- no translation found for alert_redirect_outgoing_call (1267579501303765238) -->
-    <skip />
-    <!-- no translation found for alert_redirect_outgoing_call_timeout (7268954889515301158) -->
-    <skip />
+    <string name="alert_redirect_outgoing_call" msgid="1267579501303765238">"<xliff:g id="OTHER_APP">%1$s</xliff:g> uygulamasının, farklı bir numara veya hesap kullanarak arama yapmasına izin verin."</string>
+    <string name="alert_redirect_outgoing_call_timeout" msgid="7268954889515301158">"Arama <xliff:g id="OTHER_APP">%1$s</xliff:g> ile yapılamaz. Farklı bir arama yönlendirme uygulaması kullanmayı veya yardım almak için geliştirici ile iletişime geçmeyi deneyin."</string>
     <string name="phone_settings_call_blocking_txt" msgid="3976004073043846733">"Çağrı Engelleme"</string>
     <string name="phone_settings_number_not_in_contact_txt" msgid="3126829421867168652">"Kişiler arasında bulunmayan numaralar"</string>
     <string name="phone_settings_number_not_in_contact_summary_txt" msgid="9043147855140079119">"Kişileriniz arasında bulunmayan numaralar engellenir"</string>

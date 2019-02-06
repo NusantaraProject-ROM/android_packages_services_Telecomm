@@ -83,6 +83,8 @@
     <string name="answering_ends_other_managed_video_call" msgid="1585423762458248435">"Жауап беру қазіргі бейне қоңырауды тоқтатады"</string>
     <string name="answer_incoming_call" msgid="4140530013111794587">"Жауап беру"</string>
     <string name="decline_incoming_call" msgid="806026168661598368">"Қабылдамау"</string>
+    <!-- no translation found for cant_call_due_to_no_supported_service (5128162419227548372) -->
+    <skip />
     <string name="cant_call_due_to_ongoing_call" msgid="4952615196237854748">"Қоңырау шалу мүмкін емес, себебі <xliff:g id="OTHER_CALL">%1$s</xliff:g> қоңырауы белсенді."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="1380804892363503856">"Қоңырау шалу мүмкін емес, себебі <xliff:g id="OTHER_CALL">%1$s</xliff:g> қоңыраулары белсенді."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="149091978697302211">"Қоңырау шалу мүмкін емес, себебі басқа қолданбадан қоңырау шалынуда."</string>
@@ -90,10 +92,8 @@
     <string name="notification_channel_missed_call" msgid="8727062678632713146">"Қабылданбаған қоңыраулар"</string>
     <string name="notification_channel_call_blocking" msgid="2943358779746676070">"Қоңырауды бөгеу"</string>
     <string name="alert_outgoing_call" msgid="982908156825958001">"Жаңа қоңырау шалу <xliff:g id="OTHER_APP">%1$s</xliff:g> қоңырауын тоқтатады."</string>
-    <!-- no translation found for alert_redirect_outgoing_call (1267579501303765238) -->
-    <skip />
-    <!-- no translation found for alert_redirect_outgoing_call_timeout (7268954889515301158) -->
-    <skip />
+    <string name="alert_redirect_outgoing_call" msgid="1267579501303765238">"<xliff:g id="OTHER_APP">%1$s</xliff:g> қолданбасының басқа нөмір немесе есептік жазба арқылы қоңырау шалуына рұқсат ету."</string>
+    <string name="alert_redirect_outgoing_call_timeout" msgid="7268954889515301158">"<xliff:g id="OTHER_APP">%1$s</xliff:g> арқылы қоңырау шалу мүмкін емес. Басқа қоңырау бағыттайтын қолданбаны пайдаланып көріңіз немесе әзірлеушіден көмек сұраңыз."</string>
     <string name="phone_settings_call_blocking_txt" msgid="3976004073043846733">"Қоңырауды бөгеу"</string>
     <string name="phone_settings_number_not_in_contact_txt" msgid="3126829421867168652">"Контактілерде жоқ нөмірлер"</string>
     <string name="phone_settings_number_not_in_contact_summary_txt" msgid="9043147855140079119">"Контактілерде жоқ нөмірлерді бөгеу"</string>

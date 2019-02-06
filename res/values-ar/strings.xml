@@ -83,6 +83,8 @@
     <string name="answering_ends_other_managed_video_call" msgid="1585423762458248435">"سيؤدي الرد إلى إنهاء مكالمات الفيديو"</string>
     <string name="answer_incoming_call" msgid="4140530013111794587">"رد"</string>
     <string name="decline_incoming_call" msgid="806026168661598368">"رفض"</string>
+    <!-- no translation found for cant_call_due_to_no_supported_service (5128162419227548372) -->
+    <skip />
     <string name="cant_call_due_to_ongoing_call" msgid="4952615196237854748">"يتعذر إجراء المكالمة نتيجة لمكالمة <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="1380804892363503856">"يتعذر إجراء المكالمة نتيجة لمكالمات <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="149091978697302211">"يتعذر إجراء المكالمة نتيجة لوجود مكالمة في تطبيق آخر."</string>
@@ -90,10 +92,8 @@
     <string name="notification_channel_missed_call" msgid="8727062678632713146">"المكالمات الفائتة"</string>
     <string name="notification_channel_call_blocking" msgid="2943358779746676070">"حظر المكالمات"</string>
     <string name="alert_outgoing_call" msgid="982908156825958001">"يؤدي إجراء هذه المكالمة إلى إنهاء مكالمة <xliff:g id="OTHER_APP">%1$s</xliff:g>."</string>
-    <!-- no translation found for alert_redirect_outgoing_call (1267579501303765238) -->
-    <skip />
-    <!-- no translation found for alert_redirect_outgoing_call_timeout (7268954889515301158) -->
-    <skip />
+    <string name="alert_redirect_outgoing_call" msgid="1267579501303765238">"اسمح لتطبيق <xliff:g id="OTHER_APP">%1$s</xliff:g> بإجراء المكالمة باستخدام رقم آخر أو حساب مختلف."</string>
+    <string name="alert_redirect_outgoing_call_timeout" msgid="7268954889515301158">"لا يمكن إجراء المكالمة بواسطة <xliff:g id="OTHER_APP">%1$s</xliff:g>. يمكنك تجربة استخدام تطبيق آخر لإعادة توجيه المكالمة أو الاتصال بمطور البرنامج للحصول على مساعدة."</string>
     <string name="phone_settings_call_blocking_txt" msgid="3976004073043846733">"حظر المكالمات"</string>
     <string name="phone_settings_number_not_in_contact_txt" msgid="3126829421867168652">"الأرقام غير المسردة في \"جهات الاتصال\""</string>
     <string name="phone_settings_number_not_in_contact_summary_txt" msgid="9043147855140079119">"حظر المكالمات عير المسردة في \"جهات الاتصال\""</string>
