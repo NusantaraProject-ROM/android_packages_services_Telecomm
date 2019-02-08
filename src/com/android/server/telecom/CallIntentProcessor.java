@@ -145,6 +145,14 @@ public class CallIntentProcessor {
         if (isAddParticipant) {
             clientExtras.putBoolean(TelephonyProperties.ADD_PARTICIPANT_KEY, isAddParticipant);
         }
+        if (intent.hasExtra(TelecomManager.EXTRA_START_CALL_WITH_RTT)) {
+            boolean isStartRttCall = intent.getBooleanExtra(
+                    TelecomManager.EXTRA_START_CALL_WITH_RTT, false);
+            Log.d(CallIntentProcessor.class, "isStartRttCall = "+isStartRttCall);
+            if (!isStartRttCall) {
+                clientExtras.putBoolean(TelecomManager.EXTRA_START_CALL_WITH_RTT, isStartRttCall);
+            }
+        }
 
         // Ensure call subject is passed on to the connection service.
         if (intent.hasExtra(TelecomManager.EXTRA_CALL_SUBJECT)) {
