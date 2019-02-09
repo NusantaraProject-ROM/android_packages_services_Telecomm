@@ -48,7 +48,8 @@ LOCAL_JAVA_LIBRARIES := \
     android.test.base \
     android.test.runner \
     telephony-common \
-    telephony-ext
+    telephony-ext \
+    ims-ext-common
 
 LOCAL_USE_AAPT2 := true
 
