@@ -4680,6 +4680,7 @@ public class CallsManager extends Call.ListenerBase
 
     public void resetConnectionTime(Call call) {
         call.setConnectTimeMillis(System.currentTimeMillis());
+        call.setConnectElapsedTimeMillis(SystemClock.elapsedRealtime());
         if (mCalls.contains(call)) {
             for (CallsManagerListener listener : mListeners) {
                 listener.onConnectionTimeChanged(call);
