@@ -83,6 +83,8 @@
     <string name="answering_ends_other_managed_video_call" msgid="1585423762458248435">"Ef þessu er svarað lýkur myndsímtalinu"</string>
     <string name="answer_incoming_call" msgid="4140530013111794587">"Svara"</string>
     <string name="decline_incoming_call" msgid="806026168661598368">"Hafna"</string>
+    <!-- no translation found for cant_call_due_to_no_supported_service (5128162419227548372) -->
+    <skip />
     <string name="cant_call_due_to_ongoing_call" msgid="4952615196237854748">"Ekki er hægt að hringja sökum símtalsins með <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="1380804892363503856">"Ekki er hægt að hringja sökum símtala með <xliff:g id="OTHER_CALL">%1$s</xliff:g>."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="149091978697302211">"Ekki er hægt að hringja sökum símtals í öðru forriti."</string>
@@ -90,10 +92,8 @@
     <string name="notification_channel_missed_call" msgid="8727062678632713146">"Ósvöruð símtöl"</string>
     <string name="notification_channel_call_blocking" msgid="2943358779746676070">"Lokað fyrir símtöl"</string>
     <string name="alert_outgoing_call" msgid="982908156825958001">"Ef þú hringir mun þessu símtali í <xliff:g id="OTHER_APP">%1$s</xliff:g> ljúka."</string>
-    <!-- no translation found for alert_redirect_outgoing_call (1267579501303765238) -->
-    <skip />
-    <!-- no translation found for alert_redirect_outgoing_call_timeout (7268954889515301158) -->
-    <skip />
+    <string name="alert_redirect_outgoing_call" msgid="1267579501303765238">"Leyfa <xliff:g id="OTHER_APP">%1$s</xliff:g> að hringja með öðru númeri eða reikningi."</string>
+    <string name="alert_redirect_outgoing_call_timeout" msgid="7268954889515301158">"Ekki er hægt að hringja símtal með <xliff:g id="OTHER_APP">%1$s</xliff:g>. Prófaðu að nota annað símtalaforrit eða hafðu samband við þróunaraðila til að fá aðstoð."</string>
     <string name="phone_settings_call_blocking_txt" msgid="3976004073043846733">"Lokað fyrir símtöl"</string>
     <string name="phone_settings_number_not_in_contact_txt" msgid="3126829421867168652">"Númer sem eru ekki í tengiliðum"</string>
     <string name="phone_settings_number_not_in_contact_summary_txt" msgid="9043147855140079119">"Loka fyrir númer sem eru ekki á tengiliðalista"</string>

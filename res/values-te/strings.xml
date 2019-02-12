@@ -83,6 +83,8 @@
     <string name="answering_ends_other_managed_video_call" msgid="1585423762458248435">"సమాధానమివ్వడం వలన మీ కొనసాగుతున్న వీడియో కాల్ ముగుస్తుంది"</string>
     <string name="answer_incoming_call" msgid="4140530013111794587">"సమాధానమివ్వండి"</string>
     <string name="decline_incoming_call" msgid="806026168661598368">"తిరస్కరించు"</string>
+    <!-- no translation found for cant_call_due_to_no_supported_service (5128162419227548372) -->
+    <skip />
     <string name="cant_call_due_to_ongoing_call" msgid="4952615196237854748">"మీ <xliff:g id="OTHER_CALL">%1$s</xliff:g> కాల్ కొనసాగుతున్నందున కాల్ చేయడం సాధ్యపడదు."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="1380804892363503856">"మీ <xliff:g id="OTHER_CALL">%1$s</xliff:g> కాల్‌లు కొనసాగుతున్నందున కాల్ చేయడం సాధ్యపడదు."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="149091978697302211">"వేరొక అనువర్తనంలో కాల్ కొనసాగుతున్నందున కాల్ చేయడం సాధ్యపడదు."</string>
@@ -90,10 +92,8 @@
     <string name="notification_channel_missed_call" msgid="8727062678632713146">"సమాధానం ఇవ్వని కాల్‌లు"</string>
     <string name="notification_channel_call_blocking" msgid="2943358779746676070">"కాల్ బ్లాక్ చేయడం"</string>
     <string name="alert_outgoing_call" msgid="982908156825958001">"ఈ కాల్ చేయడం వలన మీ <xliff:g id="OTHER_APP">%1$s</xliff:g> కాల్ ముగుస్తుంది."</string>
-    <!-- no translation found for alert_redirect_outgoing_call (1267579501303765238) -->
-    <skip />
-    <!-- no translation found for alert_redirect_outgoing_call_timeout (7268954889515301158) -->
-    <skip />
+    <string name="alert_redirect_outgoing_call" msgid="1267579501303765238">"వేరే నంబర్ లేదా ఖాతాను ఉపయోగించి కాల్ చేయడానికి <xliff:g id="OTHER_APP">%1$s</xliff:g>ని అనుమతించండి."</string>
+    <string name="alert_redirect_outgoing_call_timeout" msgid="7268954889515301158">"<xliff:g id="OTHER_APP">%1$s</xliff:g> ద్వారా కాల్ చేయలేము. వేరే కాల్ మళ్లింపు యాప్ ఉపయోగించండి లేదా సహాయం కోసం డెవలపర్‌ను సంప్రదించడానికి ప్రయత్నించండి."</string>
     <string name="phone_settings_call_blocking_txt" msgid="3976004073043846733">"కాల్ బ్లాక్ చేయడం"</string>
     <string name="phone_settings_number_not_in_contact_txt" msgid="3126829421867168652">"పరిచయాలలో లేని నంబర్‌లు"</string>
     <string name="phone_settings_number_not_in_contact_summary_txt" msgid="9043147855140079119">"మీ పరిచయాలలో లేని నంబర్‌లను బ్లాక్ చేయండి"</string>
