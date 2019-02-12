@@ -83,6 +83,8 @@
     <string name="answering_ends_other_managed_video_call" msgid="1585423762458248435">"Ha válaszol a hívásra, megszakítja a meglévő videohívást"</string>
     <string name="answer_incoming_call" msgid="4140530013111794587">"Hívás fogadása"</string>
     <string name="decline_incoming_call" msgid="806026168661598368">"Elutasítás"</string>
+    <!-- no translation found for cant_call_due_to_no_supported_service (5128162419227548372) -->
+    <skip />
     <string name="cant_call_due_to_ongoing_call" msgid="4952615196237854748">"A(z) <xliff:g id="OTHER_CALL">%1$s</xliff:g>-hívás miatt nem indítható hívás."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="1380804892363503856">"A(z) <xliff:g id="OTHER_CALL">%1$s</xliff:g>-hívások miatt nem indítható hívás."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="149091978697302211">"Egy másik alkalmazásban folytatott hívás miatt nem indítható hívás."</string>
@@ -90,10 +92,8 @@
     <string name="notification_channel_missed_call" msgid="8727062678632713146">"Nem fogadott hívások"</string>
     <string name="notification_channel_call_blocking" msgid="2943358779746676070">"Hívásletiltás"</string>
     <string name="alert_outgoing_call" msgid="982908156825958001">"Ha hívást indít, azzal megszakítja a(z) <xliff:g id="OTHER_APP">%1$s</xliff:g>-hívást."</string>
-    <!-- no translation found for alert_redirect_outgoing_call (1267579501303765238) -->
-    <skip />
-    <!-- no translation found for alert_redirect_outgoing_call_timeout (7268954889515301158) -->
-    <skip />
+    <string name="alert_redirect_outgoing_call" msgid="1267579501303765238">"Más számmal vagy fiókkal való hívásindítás engedélyezése a(z) <xliff:g id="OTHER_APP">%1$s</xliff:g> számára."</string>
+    <string name="alert_redirect_outgoing_call_timeout" msgid="7268954889515301158">"A(z) <xliff:g id="OTHER_APP">%1$s</xliff:g> nem tudja elindítani a hívást. Használjon másik hívásátirányítási alkalmazást, vagy forduljon az alkalmazás fejlesztőjéhez."</string>
     <string name="phone_settings_call_blocking_txt" msgid="3976004073043846733">"Hívásletiltás"</string>
     <string name="phone_settings_number_not_in_contact_txt" msgid="3126829421867168652">"A névjegyek között nem szereplő számok"</string>
     <string name="phone_settings_number_not_in_contact_summary_txt" msgid="9043147855140079119">"A névjegyek között nem szereplő számok letiltása"</string>

@@ -83,6 +83,8 @@
     <string name="answering_ends_other_managed_video_call" msgid="1585423762458248435">"जवाफ फर्काउनुले तपाईंको जारी भिडियो कल समाप्त हुनेछ"</string>
     <string name="answer_incoming_call" msgid="4140530013111794587">"जवाफ दिनुहोस्"</string>
     <string name="decline_incoming_call" msgid="806026168661598368">"अस्वीकार गर्नुहोस्"</string>
+    <!-- no translation found for cant_call_due_to_no_supported_service (5128162419227548372) -->
+    <skip />
     <string name="cant_call_due_to_ongoing_call" msgid="4952615196237854748">"तपाईंको <xliff:g id="OTHER_CALL">%1$s</xliff:g> कलका कारण कल गर्न सकिँदैन।"</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="1380804892363503856">"तपाईंका <xliff:g id="OTHER_CALL">%1$s</xliff:g> कलहरूका कारण कल गर्न सकिँदैन।"</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="149091978697302211">"अर्को अनुप्रयोगमा जारी कलका कारण कल गर्न सकिँदैन।"</string>
@@ -90,10 +92,8 @@
     <string name="notification_channel_missed_call" msgid="8727062678632713146">"छुटेका कलहरू"</string>
     <string name="notification_channel_call_blocking" msgid="2943358779746676070">"कलमाथि रोक लगाउने सुविधा"</string>
     <string name="alert_outgoing_call" msgid="982908156825958001">"यो कल गर्नुले तपाईंको <xliff:g id="OTHER_APP">%1$s</xliff:g> कल अन्त्य गर्दछ।"</string>
-    <!-- no translation found for alert_redirect_outgoing_call (1267579501303765238) -->
-    <skip />
-    <!-- no translation found for alert_redirect_outgoing_call_timeout (7268954889515301158) -->
-    <skip />
+    <string name="alert_redirect_outgoing_call" msgid="1267579501303765238">"कुनै अर्को नम्बर वा खाता प्रयोग गरी <xliff:g id="OTHER_APP">%1$s</xliff:g> लाई कल गर्ने अनुमति दिनुहोस्।"</string>
+    <string name="alert_redirect_outgoing_call_timeout" msgid="7268954889515301158">"<xliff:g id="OTHER_APP">%1$s</xliff:g> प्रयोग गरेर कल गर्न सकिएन। कुनै अर्को रिडिरेक्टिङ अनुप्रयोगको प्रयोग वा मद्दतका लागि विकासकर्तासँग सम्पर्क गरी हेर्नुहोस्।"</string>
     <string name="phone_settings_call_blocking_txt" msgid="3976004073043846733">"कलमाथि रोक लगाउने सुविधा"</string>
     <string name="phone_settings_number_not_in_contact_txt" msgid="3126829421867168652">"सम्पर्क सूचीहरूमा नरहेका नम्बरहरू"</string>
     <string name="phone_settings_number_not_in_contact_summary_txt" msgid="9043147855140079119">"आफ्नो सम्पर्क सूचीहरूमा सूचीबद्ध नगरिएका नम्बरहरूमाथि रोक लगाउनुहोस्"</string>
