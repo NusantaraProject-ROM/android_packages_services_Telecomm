@@ -1372,7 +1372,7 @@ public class CallsManager extends Call.ListenerBase
             }
             addParticipant(number);
             mInCallController.bringToForeground(false);
-            return null;
+            return CompletableFuture.completedFuture(null);
         }
         // Force tel scheme for ims conf uri/skip schema calls to avoid selection of sip accounts
         String scheme = (isSkipSchemaOrConfUri? PhoneAccount.SCHEME_TEL: handle.getScheme());
