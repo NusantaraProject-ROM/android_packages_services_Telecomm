@@ -837,8 +837,8 @@ public class BluetoothPhoneServiceImpl {
             if (numActiveCalls > 0) {
                     Log.i(TAG, "updateHeadsetWithCallState: Call active");
                     boolean isCsCall = ((activeCall != null) &&
-                            !(activeCall.can(Connection.PROPERTY_HIGH_DEF_AUDIO) ||
-                            activeCall.can(Connection.PROPERTY_WIFI)));
+                            !(activeCall.hasProperty(Connection.PROPERTY_HIGH_DEF_AUDIO) ||
+                            activeCall.hasProperty(Connection.PROPERTY_WIFI)));
                     final Intent intent = new Intent(TelecomManager.ACTION_CALL_TYPE);
                     intent.putExtra(TelecomManager.EXTRA_CALL_TYPE_CS, isCsCall);
                     mContext.sendBroadcastAsUser(intent, UserHandle.ALL);
