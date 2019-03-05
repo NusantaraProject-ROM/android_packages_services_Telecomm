@@ -67,7 +67,6 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Pair;
-import android.widget.Toast;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.AsyncEmergencyContactNotifier;
@@ -368,6 +367,12 @@ public class CallsManager extends Call.ListenerBase
                                                PhoneAccountHandle handle) {
             broadcastUnregisterIntent(handle);
         }
+
+        @Override
+        public void onPhoneAccountChanged(PhoneAccountRegistrar registrar,
+                PhoneAccount phoneAccount) {
+            handlePhoneAccountChanged(registrar, phoneAccount);
+        }
     };
 
     /**
@@ -623,11 +628,11 @@ public class CallsManager extends Call.ListenerBase
                 new TelecomServiceImpl.SettingsSecureAdapterImpl(), mCallerInfoLookupHelper,
                 new CallScreeningServiceHelper.AppLabelProxy() {
                     @Override
-                    public String getAppLabel(String packageName) {
+                    public CharSequence getAppLabel(String packageName) {
                         PackageManager pm = mContext.getPackageManager();
                         try {
                             ApplicationInfo info = pm.getApplicationInfo(packageName, 0);
-                            return (String) pm.getApplicationLabel(info);
+                            return pm.getApplicationLabel(info);
                         } catch (PackageManager.NameNotFoundException nnfe) {
                             Log.w(this, "Could not determine package name.");
                         }
@@ -978,6 +983,11 @@ public class CallsManager extends Call.ListenerBase
 
     EmergencyCallHelper getEmergencyCallHelper() {
         return mEmergencyCallHelper;
+    }
+
+    @VisibleForTesting
+    public PhoneAccountRegistrar.Listener getPhoneAccountListener() {
+        return mPhoneAccountListener;
     }
 
     @VisibleForTesting
@@ -1618,12 +1628,12 @@ public class CallsManager extends Call.ListenerBase
                 theCall,
                 new CallScreeningServiceHelper.AppLabelProxy() {
                     @Override
-                    public String getAppLabel(String packageName) {
+                    public CharSequence getAppLabel(String packageName) {
                         PackageManager pm = mContext.getPackageManager();
                         try {
                             ApplicationInfo info = pm.getApplicationInfo(
                                     packageName, 0);
-                            return (String) pm.getApplicationLabel(info);
+                            return pm.getApplicationLabel(info);
                         } catch (PackageManager.NameNotFoundException nnfe) {
                             Log.w(this, "Could not determine package name.");
                         }
@@ -4686,5 +4696,24 @@ public class CallsManager extends Call.ListenerBase
         errorIntent.putExtra(ErrorDialogActivity.ERROR_MESSAGE_ID_EXTRA, messageId);
         errorIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         mContext.startActivityAsUser(errorIntent, UserHandle.CURRENT);
+    }
+
+    /**
+     * Handles changes to a {@link PhoneAccount}.
+     *
+     * Checks for changes to video calling availability and updates whether calls for that phone
+     * account are video capable.
+     *
+     * @param registrar The {@link PhoneAccountRegistrar} originating the change.
+     * @param phoneAccount The {@link PhoneAccount} which changed.
+     */
+    private void handlePhoneAccountChanged(PhoneAccountRegistrar registrar,
+            PhoneAccount phoneAccount) {
+        Log.i(this, "handlePhoneAccountChanged: phoneAccount=%s", phoneAccount);
+        boolean isVideoNowSupported = phoneAccount.hasCapabilities(
+                PhoneAccount.CAPABILITY_VIDEO_CALLING);
+        mCalls.stream()
+                .filter(c -> phoneAccount.getAccountHandle().equals(c.getTargetPhoneAccount()))
+                .forEach(c -> c.setVideoCallingSupportedByPhoneAccount(isVideoNowSupported));
     }
 }
