@@ -1009,6 +1009,10 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         return mPostDialDigits;
     }
 
+    public void clearPostDialDigits() {
+        mPostDialDigits = null;
+    }
+
     public String getViaNumber() {
         return mViaNumber;
     }
