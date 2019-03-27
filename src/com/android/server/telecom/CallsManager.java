@@ -67,7 +67,6 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Pair;
-import android.widget.Toast;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.AsyncEmergencyContactNotifier;
@@ -107,7 +106,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -156,27 +154,6 @@ public class CallsManager extends Call.ListenerBase
     /** Interface used to define the action which is executed delay under some condition. */
     interface PendingAction {
         void performAction();
-    }
-
-    /** An executor that starts a log session before executing a runnable */
-    private class LoggedHandlerExecutor implements Executor {
-        private Handler mHandler;
-        private String mSessionName;
-
-        public LoggedHandlerExecutor(Handler handler, String sessionName) {
-            mHandler = handler;
-            mSessionName = sessionName;
-        }
-
-        @Override
-        public void execute(java.lang.Runnable command) {
-            mHandler.post(new Runnable(mSessionName, mLock) {
-                @Override
-                public void loggedRun() {
-                    command.run();
-                }
-            }.prepare());
-        }
     }
 
     private static final String TAG = "CallsManager";
@@ -389,6 +366,12 @@ public class CallsManager extends Call.ListenerBase
         public void onPhoneAccountUnRegistered(PhoneAccountRegistrar registrar,
                                                PhoneAccountHandle handle) {
             broadcastUnregisterIntent(handle);
+        }
+
+        @Override
+        public void onPhoneAccountChanged(PhoneAccountRegistrar registrar,
+                PhoneAccount phoneAccount) {
+            handlePhoneAccountChanged(registrar, phoneAccount);
         }
     };
 
@@ -645,11 +628,11 @@ public class CallsManager extends Call.ListenerBase
                 new TelecomServiceImpl.SettingsSecureAdapterImpl(), mCallerInfoLookupHelper,
                 new CallScreeningServiceHelper.AppLabelProxy() {
                     @Override
-                    public String getAppLabel(String packageName) {
+                    public CharSequence getAppLabel(String packageName) {
                         PackageManager pm = mContext.getPackageManager();
                         try {
                             ApplicationInfo info = pm.getApplicationInfo(packageName, 0);
-                            return (String) pm.getApplicationLabel(info);
+                            return pm.getApplicationLabel(info);
                         } catch (PackageManager.NameNotFoundException nnfe) {
                             Log.w(this, "Could not determine package name.");
                         }
@@ -1000,6 +983,11 @@ public class CallsManager extends Call.ListenerBase
 
     EmergencyCallHelper getEmergencyCallHelper() {
         return mEmergencyCallHelper;
+    }
+
+    @VisibleForTesting
+    public PhoneAccountRegistrar.Listener getPhoneAccountListener() {
+        return mPhoneAccountListener;
     }
 
     @VisibleForTesting
@@ -1382,7 +1370,7 @@ public class CallsManager extends Call.ListenerBase
             }
             addParticipant(number);
             mInCallController.bringToForeground(false);
-            return null;
+            return CompletableFuture.completedFuture(null);
         }
         // Force tel scheme for ims conf uri/skip schema calls to avoid selection of sip accounts
         String scheme = (isSkipSchemaOrConfUri? PhoneAccount.SCHEME_TEL: handle.getScheme());
@@ -1403,7 +1391,7 @@ public class CallsManager extends Call.ListenerBase
                                 findOutgoingCallPhoneAccount(requestedAccountHandle, handle,
                                         VideoProfile.isVideo(finalVideoState), initiatingUser,
                                         scheme),
-                        new LoggedHandlerExecutor(outgoingCallHandler, "CM.fOCP"));
+                        new LoggedHandlerExecutor(outgoingCallHandler, "CM.fOCP", mLock));
 
         // This is a block of code that executes after the list of potential phone accts has been
         // retrieved.
@@ -1417,7 +1405,7 @@ public class CallsManager extends Call.ListenerBase
                         phoneAccountHandle = null;
                     }
                     finalCall.setTargetPhoneAccount(phoneAccountHandle);
-                }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.sOCPA"));
+                }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.sOCPA", mLock));
 
 
         // This composes the future containing the potential phone accounts with code that queries
@@ -1436,7 +1424,7 @@ public class CallsManager extends Call.ListenerBase
                     }
                     return PhoneAccountSuggestionHelper.bindAndGetSuggestions(mContext,
                             finalCall.getHandle(), potentialPhoneAccounts);
-                }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.cOCSS"));
+                }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.cOCSS", mLock));
 
 
         // This future checks the status of existing calls and attempts to make room for the
@@ -1477,7 +1465,7 @@ public class CallsManager extends Call.ListenerBase
                         return CompletableFuture.completedFuture(null);
                     }
                     return CompletableFuture.completedFuture(finalCall);
-        }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.dSMCP"));
+        }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.dSMCP", mLock));
 
         // The outgoing call can be placed, go forward. This future glues together the results of
         // the account suggestion stage and the make room for call stage.
@@ -1531,7 +1519,7 @@ public class CallsManager extends Call.ListenerBase
 
                             addCall(callToPlace);
                             return mPendingAccountSelection;
-                        }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.dSPA"));
+                        }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.dSPA", mLock));
 
         // Potentially perform call identification for dialed TEL scheme numbers.
         if (PhoneAccount.SCHEME_TEL.equals(handle.getScheme())) {
@@ -1558,7 +1546,7 @@ public class CallsManager extends Call.ListenerBase
                         if (!isInContacts) {
                             performCallIdentification(theCall);
                         }
-            }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.pCSB"));
+            }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.pCSB", mLock));
         }
 
         // Finally, after all user interaction is complete, we execute this code to finish setting
@@ -1618,7 +1606,7 @@ public class CallsManager extends Call.ListenerBase
                         addCall(callToUse);
                     }
                     return CompletableFuture.completedFuture(callToUse);
-                }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.pASP"));
+                }, new LoggedHandlerExecutor(outgoingCallHandler, "CM.pASP", mLock));
         return mLatestPostSelectionProcessingFuture;
     }
 
@@ -1640,12 +1628,12 @@ public class CallsManager extends Call.ListenerBase
                 theCall,
                 new CallScreeningServiceHelper.AppLabelProxy() {
                     @Override
-                    public String getAppLabel(String packageName) {
+                    public CharSequence getAppLabel(String packageName) {
                         PackageManager pm = mContext.getPackageManager();
                         try {
                             ApplicationInfo info = pm.getApplicationInfo(
                                     packageName, 0);
-                            return (String) pm.getApplicationLabel(info);
+                            return pm.getApplicationLabel(info);
                         } catch (PackageManager.NameNotFoundException nnfe) {
                             Log.w(this, "Could not determine package name.");
                         }
@@ -4680,6 +4668,7 @@ public class CallsManager extends Call.ListenerBase
 
     public void resetConnectionTime(Call call) {
         call.setConnectTimeMillis(System.currentTimeMillis());
+        call.setConnectElapsedTimeMillis(SystemClock.elapsedRealtime());
         if (mCalls.contains(call)) {
             for (CallsManagerListener listener : mListeners) {
                 listener.onConnectionTimeChanged(call);
@@ -4707,5 +4696,24 @@ public class CallsManager extends Call.ListenerBase
         errorIntent.putExtra(ErrorDialogActivity.ERROR_MESSAGE_ID_EXTRA, messageId);
         errorIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         mContext.startActivityAsUser(errorIntent, UserHandle.CURRENT);
+    }
+
+    /**
+     * Handles changes to a {@link PhoneAccount}.
+     *
+     * Checks for changes to video calling availability and updates whether calls for that phone
+     * account are video capable.
+     *
+     * @param registrar The {@link PhoneAccountRegistrar} originating the change.
+     * @param phoneAccount The {@link PhoneAccount} which changed.
+     */
+    private void handlePhoneAccountChanged(PhoneAccountRegistrar registrar,
+            PhoneAccount phoneAccount) {
+        Log.i(this, "handlePhoneAccountChanged: phoneAccount=%s", phoneAccount);
+        boolean isVideoNowSupported = phoneAccount.hasCapabilities(
+                PhoneAccount.CAPABILITY_VIDEO_CALLING);
+        mCalls.stream()
+                .filter(c -> phoneAccount.getAccountHandle().equals(c.getTargetPhoneAccount()))
+                .forEach(c -> c.setVideoCallingSupportedByPhoneAccount(isVideoNowSupported));
     }
 }

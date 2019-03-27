@@ -308,6 +308,13 @@ public class ComponentContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user,
+                String receiverPermission, int appOp, Bundle options,
+                BroadcastReceiver resultReceiver, Handler scheduler, int initialCode,
+                String initialData, Bundle initialExtras) {
+        }
+
+        @Override
         public Context createPackageContextAsUser(String packageName, int flags, UserHandle user)
                 throws PackageManager.NameNotFoundException {
             return this;
@@ -544,6 +551,10 @@ public class ComponentContextFixture implements TestFixture<Context> {
 
     public void putBooleanResource(int id, boolean value) {
         when(mResources.getBoolean(eq(id))).thenReturn(value);
+    }
+
+    public void putStringArrayResource(int id, String[] value) {
+        when(mResources.getStringArray(eq(id))).thenReturn(value);
     }
 
     public void setTelecomManager(TelecomManager telecomManager) {
