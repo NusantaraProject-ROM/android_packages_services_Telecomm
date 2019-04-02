@@ -70,6 +70,7 @@ public class BluetoothDeviceManager {
                             mBluetoothHeadsetService = null;
                             Log.i(BluetoothDeviceManager.this, "Lost BluetoothHeadset service. " +
                                     "Removing all tracked devices.");
+                            mBluetoothRouteManager.onActiveDeviceChanged(null);
                             List<BluetoothDevice> devicesToRemove = new LinkedList<>(
                                     mConnectedDevicesByAddress.values());
                             mConnectedDevicesByAddress.clear();
