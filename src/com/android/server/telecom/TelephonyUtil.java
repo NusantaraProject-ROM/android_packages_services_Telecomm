@@ -76,7 +76,9 @@ public final class TelephonyUtil {
     }
 
     public static boolean shouldProcessAsEmergency(Context context, Uri handle) {
-        return handle != null && isLocalEmergencyNumber(handle.getSchemeSpecificPart());
+        TelephonyManager tm = (TelephonyManager) context.getSystemService(
+                Context.TELEPHONY_SERVICE);
+        return handle != null && tm.isEmergencyNumber(handle.getSchemeSpecificPart());
     }
 
     public static boolean isLocalEmergencyNumber(String address) {
