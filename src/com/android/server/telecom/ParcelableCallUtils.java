@@ -238,7 +238,6 @@ public class ParcelableCallUtils {
                 call.getIntentExtras(),
                 extras,
                 call.getCreationTimeMillis(),
-                call.getCallIdentification(),
                 callDirection);
     }
 
@@ -295,7 +294,6 @@ public class ParcelableCallUtils {
                 null, /* intentExtras */
                 null, /* callExtras */
                 call.getCreationTimeMillis(),
-                null /* callIdentification */,
                 callDirection);
     }
 

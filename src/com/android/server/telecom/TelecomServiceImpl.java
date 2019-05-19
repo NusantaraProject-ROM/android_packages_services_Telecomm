@@ -1506,36 +1506,6 @@ public class TelecomServiceImpl {
         }
 
         /**
-         * See {@link TelecomManager#reportNuisanceCallStatus(Uri, boolean)}
-         */
-        @Override
-        public void reportNuisanceCallStatus(Uri handle, boolean isNuisance,
-                String callingPackage) {
-            try {
-                Log.startSession("TSI.rNCS");
-                if (!isPrivilegedDialerCalling(callingPackage)) {
-                    throw new SecurityException(
-                            "Only the default dialer can report nuisance call status");
-                }
-
-                long token = Binder.clearCallingIdentity();
-                try {
-                    String callScreeningPackageName =
-                            mCallsManager.getRoleManagerAdapter().getDefaultCallScreeningApp();
-
-                    if (!TextUtils.isEmpty(callScreeningPackageName)) {
-                        mNuisanceCallReporter.reportNuisanceCallStatus(callScreeningPackageName,
-                                handle, isNuisance);
-                    }
-                } finally {
-                    Binder.restoreCallingIdentity(token);
-                }
-            } finally {
-                Log.endSession();
-            }
-        }
-
-        /**
          * See {@link TelecomManager#handleCallIntent(Intent)} ()}
          */
         @Override
@@ -1663,6 +1633,28 @@ public class TelecomServiceImpl {
                 Log.endSession();
             }
         }
+
+        @Override
+        public void setTestDefaultDialer(String packageName) {
+            try {
+                Log.startSession("TSI.sTDD");
+                enforceModifyPermission();
+                if (Binder.getCallingUid() != Process.SHELL_UID
+                        && Binder.getCallingUid() != Process.ROOT_UID) {
+                    throw new SecurityException("Shell-only API.");
+                }
+                synchronized (mLock) {
+                    long token = Binder.clearCallingIdentity();
+                    try {
+                        mCallsManager.getRoleManagerAdapter().setTestDefaultDialer(packageName);
+                    } finally {
+                        Binder.restoreCallingIdentity(token);
+                    }
+                }
+            } finally {
+                Log.endSession();
+            }
+        }
     };
 
     /**
@@ -1708,7 +1700,6 @@ public class TelecomServiceImpl {
     private AppOpsManager mAppOpsManager;
     private PackageManager mPackageManager;
     private CallsManager mCallsManager;
-    private final NuisanceCallReporter mNuisanceCallReporter;
     private final PhoneAccountRegistrar mPhoneAccountRegistrar;
     private final CallIntentProcessor.Adapter mCallIntentProcessorAdapter;
     private final UserCallIntentProcessorFactory mUserCallIntentProcessorFactory;
@@ -1726,7 +1717,6 @@ public class TelecomServiceImpl {
             DefaultDialerCache defaultDialerCache,
             SubscriptionManagerAdapter subscriptionManagerAdapter,
             SettingsSecureAdapter settingsSecureAdapter,
-            NuisanceCallReporter nuisanceCallReporter,
             TelecomSystem.SyncRoot lock) {
         mContext = context;
         mAppOpsManager = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
@@ -1741,7 +1731,6 @@ public class TelecomServiceImpl {
         mCallIntentProcessorAdapter = callIntentProcessorAdapter;
         mSubscriptionManagerAdapter = subscriptionManagerAdapter;
         mSettingsSecureAdapter = settingsSecureAdapter;
-        mNuisanceCallReporter = nuisanceCallReporter;
     }
 
     public static String getSystemDialerPackage(Context context) {
@@ -2009,8 +1998,17 @@ public class TelecomServiceImpl {
 
     private boolean isPrivilegedDialerCalling(String callingPackage) {
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
-        return mDefaultDialerCache.isDefaultOrSystemDialer(
-                callingPackage, Binder.getCallingUserHandle().getIdentifier());
+
+        // Note: Important to clear the calling identity since the code below calls into RoleManager
+        // to check who holds the dialer role, and that requires MANAGE_ROLE_HOLDERS permission
+        // which is a system permission.
+        long token = Binder.clearCallingIdentity();
+        try {
+            return mDefaultDialerCache.isDefaultOrSystemDialer(
+                    callingPackage, Binder.getCallingUserHandle().getIdentifier());
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     private TelephonyManager getTelephonyManager() {

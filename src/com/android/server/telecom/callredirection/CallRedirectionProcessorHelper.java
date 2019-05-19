@@ -17,15 +17,14 @@
 package com.android.server.telecom.callredirection;
 
 import android.Manifest;
-import android.app.AppOpsManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
-import android.os.Binder;
 import android.os.PersistableBundle;
 import android.telecom.CallRedirectionService;
+import android.telecom.GatewayInfo;
 import android.telecom.Log;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.CarrierConfigManager;
@@ -43,7 +42,6 @@ public class CallRedirectionProcessorHelper {
     private final Context mContext;
     private final CallsManager mCallsManager;
     private final PhoneAccountRegistrar mPhoneAccountRegistrar;
-    private String mOriginalPostDialDigits = null;
 
     public CallRedirectionProcessorHelper(
             Context context,
@@ -63,7 +61,7 @@ public class CallRedirectionProcessorHelper {
         }
         Intent intent = new Intent(CallRedirectionService.SERVICE_INTERFACE)
                 .setPackage(packageName);
-        return getComponentName(intent, CallRedirectionProcessor.SERVICE_TYPE_CARRIER);
+        return getComponentName(intent, CallRedirectionProcessor.SERVICE_TYPE_USER_DEFINED);
     }
 
     @VisibleForTesting
@@ -121,13 +119,6 @@ public class CallRedirectionProcessorHelper {
                     + " permission: " + entry.serviceInfo.packageName);
             return null;
         }
-        AppOpsManager appOps = (AppOpsManager) mContext.getSystemService(
-                Context.APP_OPS_SERVICE);
-        if (appOps.noteOpNoThrow(AppOpsManager.OP_PROCESS_OUTGOING_CALLS, Binder.getCallingUid(),
-                entry.serviceInfo.packageName) != AppOpsManager.MODE_ALLOWED) {
-            Log.w(this, "App Ops does not allow " + entry.serviceInfo.packageName);
-            return null;
-        }
         return new ComponentName(entry.serviceInfo.packageName, entry.serviceInfo.name);
     }
 
@@ -136,24 +127,6 @@ public class CallRedirectionProcessorHelper {
      */
     protected Uri formatNumberForRedirection(Uri handle) {
         return removePostDialDigits(formatNumberToE164(handle));
-    }
-
-    protected Uri processNumberWhenRedirectionComplete(Uri handle) {
-        return appendStoredPostDialDigits(formatNumberForRedirection(handle));
-    }
-
-    protected void storePostDialDigits(Uri handle) {
-        String number = handle.getSchemeSpecificPart();
-        mOriginalPostDialDigits += PhoneNumberUtils.extractPostDialPortion(number);
-        Log.i(this, "storePostDialDigits, stored post dial digits: "
-                + Log.pii(mOriginalPostDialDigits));
-    }
-
-    protected Uri appendStoredPostDialDigits(Uri handle) {
-        String number = handle.getSchemeSpecificPart();
-        number += mOriginalPostDialDigits;
-        Log.i(this, "appendStoredPostDialDigits, appended number: " + Log.pii(number));
-        return Uri.fromParts(handle.getScheme(), number, null);
     }
 
     protected Uri formatNumberToE164(Uri handle) {
@@ -190,4 +163,11 @@ public class CallRedirectionProcessorHelper {
         }
     }
 
+    protected GatewayInfo getGatewayInfoFromGatewayUri(
+            String gatewayPackageName, Uri gatewayUri, Uri destinationUri) {
+        if (!TextUtils.isEmpty(gatewayPackageName) && gatewayUri != null) {
+            return new GatewayInfo(gatewayPackageName, gatewayUri, destinationUri);
+        }
+        return null;
+    }
 }

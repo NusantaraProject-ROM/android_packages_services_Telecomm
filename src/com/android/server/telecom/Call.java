@@ -32,7 +32,6 @@ import android.os.SystemClock;
 import android.os.Trace;
 import android.provider.ContactsContract.Contacts;
 import android.telecom.CallAudioState;
-import android.telecom.CallIdentification;
 import android.telecom.Conference;
 import android.telecom.ConnectionService;
 import android.telecom.DisconnectCause;
@@ -135,6 +134,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         void onConferenceStateChanged(Call call, boolean isConference);
         boolean onCanceledViaNewOutgoingCallBroadcast(Call call, long disconnectionTimeout);
         void onHoldToneRequested(Call call);
+        void onCallHoldFailed(Call call);
         void onConnectionEvent(Call call, String event, Bundle extras);
         void onExternalCallChanged(Call call, boolean isExternalCall);
         void onRttInitiationFailure(Call call, int reason);
@@ -143,7 +143,6 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                                  Bundle extras, boolean isLegacy);
         void onHandoverFailed(Call call, int error);
         void onHandoverComplete(Call call);
-        void onCallIdentificationChanged(Call call);
     }
 
     public abstract static class ListenerBase implements Listener {
@@ -210,6 +209,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         @Override
         public void onHoldToneRequested(Call call) {}
         @Override
+        public void onCallHoldFailed(Call call) {}
+        @Override
         public void onConnectionEvent(Call call, String event, Bundle extras) {}
         @Override
         public void onExternalCallChanged(Call call, boolean isExternalCall) {}
@@ -224,8 +225,6 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         public void onHandoverFailed(Call call, int error) {}
         @Override
         public void onHandoverComplete(Call call) {}
-        @Override
-        public void onCallIdentificationChanged(Call call) {}
     }
 
     private final CallerInfoLookupHelper.OnQueryCompleteListener mCallerInfoQueryListener =
@@ -386,6 +385,9 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     /** Whether this call is requesting that Telecom play the ringback tone on its behalf. */
     private boolean mRingbackRequested = false;
 
+    /** Whether this call is requesting to be silently ringing. */
+    private boolean mSilentRingingRequested = false;
+
     /** Whether direct-to-voicemail query is pending. */
     private boolean mDirectToVoicemailQueryPending;
 
@@ -535,11 +537,6 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      * {@link com.android.server.telecom.callfiltering.IncomingCallFilter.CallFilter} modules.
      */
     private boolean mIsUsingCallFiltering = false;
-
-    /**
-     * {@link CallIdentification} provided by a {@link android.telecom.CallScreeningService}.
-     */
-    private CallIdentification mCallIdentification = null;
 
     /**
      * Persists the specified parameters and initializes the new instance.
@@ -894,11 +891,16 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
      */
     public boolean setState(int newState, String tag) {
         if (mState != newState) {
-            Log.v(this, "setState %s -> %s", mState, newState);
+            Log.v(this, "setState %s -> %s", CallState.toString(mState),
+                    CallState.toString(newState));
 
             if (newState == CallState.DISCONNECTED && shouldContinueProcessingAfterDisconnect()) {
                 Log.w(this, "continuing processing disconnected call with another service");
                 mCreateConnectionProcessor.continueProcessingIfPossible(this, mDisconnectCause);
+                return false;
+            } else if (newState == CallState.ANSWERED && mState == CallState.ACTIVE) {
+                Log.w(this, "setState %s -> %s; call already active.", CallState.toString(mState),
+                        CallState.toString(newState));
                 return false;
             }
 
@@ -992,6 +994,18 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         return mRingbackRequested;
     }
 
+    public void setSilentRingingRequested(boolean silentRingingRequested) {
+        mSilentRingingRequested = silentRingingRequested;
+        Bundle bundle = new Bundle();
+        bundle.putBoolean(android.telecom.Call.EXTRA_SILENT_RINGING_REQUESTED,
+                silentRingingRequested);
+        putExtras(SOURCE_CONNECTION_SERVICE, bundle);
+    }
+
+    public boolean isSilentRingingRequested() {
+        return mSilentRingingRequested;
+    }
+
     @VisibleForTesting
     public boolean isConference() {
         return mIsConference;
@@ -1007,6 +1021,10 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
     public String getPostDialDigits() {
         return mPostDialDigits;
+    }
+
+    public void clearPostDialDigits() {
+        mPostDialDigits = null;
     }
 
     public String getViaNumber() {
@@ -3051,6 +3069,10 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             for (Listener l : mListeners) {
                 l.onHoldToneRequested(this);
             }
+        } else if (Connection.EVENT_CALL_HOLD_FAILED.equals(event)) {
+            for (Listener l : mListeners) {
+                l.onCallHoldFailed(this);
+            }
         } else {
             for (Listener l : mListeners) {
                 l.onConnectionEvent(this, event, extras);
@@ -3183,29 +3205,6 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
     public void setIsUsingCallFiltering(boolean isUsingCallFiltering) {
         mIsUsingCallFiltering = isUsingCallFiltering;
-    }
-
-    /**
-     * Update the {@link CallIdentification} for a call.
-     * @param callIdentification the {@link CallIdentification}.
-     */
-    public void setCallIdentification(CallIdentification callIdentification) {
-        if (callIdentification != null) {
-            Log.addEvent(this, LogUtils.Events.CALL_IDENTIFICATION_SET,
-                    callIdentification.getCallScreeningPackageName());
-        }
-        mCallIdentification = callIdentification;
-
-        for (Listener l : mListeners) {
-            l.onCallIdentificationChanged(this);
-        }
-    }
-
-    /**
-     * @return Call identification returned by a {@link android.telecom.CallScreeningService}.
-     */
-    public CallIdentification getCallIdentification() {
-        return mCallIdentification;
     }
 
     /**

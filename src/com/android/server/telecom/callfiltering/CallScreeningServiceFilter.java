@@ -29,7 +29,6 @@ import android.os.RemoteException;
 import android.os.UserHandle;
 import android.provider.CallLog;
 import android.provider.Settings;
-import android.telecom.CallIdentification;
 import android.telecom.CallScreeningService;
 import android.telecom.Log;
 import android.telecom.ParcelableCall;
@@ -102,6 +101,7 @@ public class CallScreeningServiceFilter {
                         mResult = new CallFilteringResult(
                                 true, // shouldAllowCall
                                 false, //shouldReject
+                                false, //shouldSilence
                                 true, //shouldAddToCallLog
                                 true // shouldShowNotification
                         );
@@ -136,6 +136,7 @@ public class CallScreeningServiceFilter {
                         mResult = new CallFilteringResult(
                                 false, // shouldAllowCall
                                 shouldReject, //shouldReject
+                                false, // shouldSilenceCall
                                 isServiceRequestingLogging, //shouldAddToCallLog
                                 shouldShowNotification, // shouldShowNotification
                                 CallLog.Calls.BLOCK_REASON_CALL_SCREENING_SERVICE, //callBlockReason
@@ -154,17 +155,24 @@ public class CallScreeningServiceFilter {
         }
 
         @Override
-        public void provideCallIdentification(String callId,
-                CallIdentification callIdentification) {
-            Log.startSession("CSCR.pCI");
+        public void silenceCall(String callId) {
+            Log.startSession("CSCR.sC");
             long token = Binder.clearCallingIdentity();
             try {
                 synchronized (mTelecomLock) {
+                    Log.d(this, "silenceCall(%s)", callId);
                     if (mCall != null && mCall.getId().equals(callId)) {
-                        callIdentification.setCallScreeningAppName(mAppName);
-                        callIdentification.setCallScreeningPackageName(mPackageName);
-                        mCall.setCallIdentification(callIdentification);
+                        mResult = new CallFilteringResult(
+                                true, // shouldAllowCall
+                                false, //shouldReject
+                                true, //shouldSilence
+                                true, //shouldAddToCallLog
+                                true // shouldShowNotification
+                        );
+                    } else {
+                        Log.w(this, "silenceCall, unknown call id: %s", callId);
                     }
+                    finishCallScreening();
                 }
             } finally {
                 Binder.restoreCallingIdentity(token);

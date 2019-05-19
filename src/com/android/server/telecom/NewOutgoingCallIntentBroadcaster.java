@@ -422,7 +422,7 @@ public class NewOutgoingCallIntentBroadcaster {
         checkAndCopyProviderExtras(originalCallIntent, broadcastIntent);
 
         final BroadcastOptions options = BroadcastOptions.makeBasic();
-        options.setAllowBackgroundActivityStarts(true);
+        options.setBackgroundActivityStartsAllowed(true);
         mContext.sendOrderedBroadcastAsUser(
                 broadcastIntent,
                 targetUser,

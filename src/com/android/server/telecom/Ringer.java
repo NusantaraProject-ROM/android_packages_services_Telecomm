@@ -32,11 +32,12 @@ import android.os.Bundle;
 import android.os.Vibrator;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.util.ArrayUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 /**
@@ -138,6 +139,12 @@ public class Ringer {
     private final Vibrator mVibrator;
     private final InCallController mInCallController;
     private final VibrationEffectProxy mVibrationEffectProxy;
+    private final boolean mIsHapticPlaybackSupportedByDevice;
+    /**
+     * For unit testing purposes only; when set, {@link #startRinging(Call, boolean)} will complete
+     * the future provided by the test using {@link #setBlockOnRingingFuture(CompletableFuture)}.
+     */
+    private CompletableFuture<Void> mBlockOnRingingFuture = null;
 
     private InCallTonePlayer mCallWaitingPlayer;
     private RingtoneFactory mRingtoneFactory;
@@ -185,6 +192,14 @@ public class Ringer {
             mDefaultVibrationEffect = mVibrationEffectProxy.createWaveform(PULSE_PATTERN,
                     PULSE_AMPLITUDE, REPEAT_VIBRATION_AT);
         }
+
+        mIsHapticPlaybackSupportedByDevice =
+                mSystemSettingsUtil.isHapticPlaybackSupported(mContext);
+    }
+
+    @VisibleForTesting
+    public void setBlockOnRingingFuture(CompletableFuture<Void> future) {
+        mBlockOnRingingFuture = future;
     }
 
     public boolean startRinging(Call foregroundCall, boolean isHfpDeviceAttached) {
@@ -199,6 +214,7 @@ public class Ringer {
         boolean shouldRingForContact = shouldRingForContact(foregroundCall.getContactUri());
         boolean isRingtonePresent = !(mRingtoneFactory.getRingtone(foregroundCall) == null);
         boolean isSelfManaged = foregroundCall.isSelfManaged();
+        boolean isSilentRingingRequested = foregroundCall.isSilentRingingRequested();
 
         boolean isRingerAudible = isVolumeOverZero && shouldRingForContact && isRingtonePresent;
         boolean hasExternalRinger = hasExternalRinger(foregroundCall);
@@ -214,21 +230,32 @@ public class Ringer {
         boolean isTheaterModeOn = mSystemSettingsUtil.isTheaterModeOn(mContext);
         boolean letDialerHandleRinging = mInCallController.doesConnectedDialerSupportRinging();
         boolean endEarly = isTheaterModeOn || letDialerHandleRinging || isSelfManaged ||
-                hasExternalRinger;
+                hasExternalRinger || isSilentRingingRequested;
 
         if (endEarly) {
             if (letDialerHandleRinging) {
                 Log.addEvent(foregroundCall, LogUtils.Events.SKIP_RINGING, "Dialer handles");
             }
+            if (isSilentRingingRequested) {
+                Log.addEvent(foregroundCall, LogUtils.Events.SKIP_RINGING, "Silent ringing "
+                        + "requested");
+            }
             Log.i(this, "Ending early -- isTheaterModeOn=%s, letDialerHandleRinging=%s, " +
-                    "isSelfManaged=%s, hasExternalRinger=%s", isTheaterModeOn,
-                    letDialerHandleRinging, isSelfManaged, hasExternalRinger);
+                            "isSelfManaged=%s, hasExternalRinger=%s, silentRingingRequested=%s",
+                    isTheaterModeOn, letDialerHandleRinging, isSelfManaged, hasExternalRinger,
+                    isSilentRingingRequested);
+            if (mBlockOnRingingFuture != null) {
+                mBlockOnRingingFuture.complete(null);
+            }
             return shouldAcquireAudioFocus;
         }
 
         stopCallWaiting();
 
         VibrationEffect effect;
+        CompletableFuture<Boolean> hapticsFuture = null;
+        // Determine if the settings and DND mode indicate that the vibrator can be used right now.
+        boolean isVibratorEnabled = isVibratorEnabled(mContext, foregroundCall);
         if (isRingerAudible) {
             mRingingCall = foregroundCall;
             Log.addEvent(foregroundCall, LogUtils.Events.START_RINGER);
@@ -271,9 +298,12 @@ public class Ringer {
                         .setInterpolatorType(VolumeShaper.Configuration.INTERPOLATOR_TYPE_LINEAR)
                         .build();
                 }
-                mRingtonePlayer.play(mRingtoneFactory, foregroundCall, mVolumeShaperConfig);
+                hapticsFuture = mRingtonePlayer.play(mRingtoneFactory, foregroundCall,
+                        mVolumeShaperConfig, isVibratorEnabled);
             } else {
-                mRingtonePlayer.play(mRingtoneFactory, foregroundCall, null);
+                // Ramping ringtone is not enabled.
+                hapticsFuture = mRingtonePlayer.play(mRingtoneFactory, foregroundCall, null,
+                        isVibratorEnabled);
                 effect = getVibrationEffectForCall(mRingtoneFactory, foregroundCall);
             }
         } else {
@@ -285,22 +315,56 @@ public class Ringer {
             effect = mDefaultVibrationEffect;
         }
 
-        if (mSystemSettingsUtil.applyRampingRinger(mContext)
-            && mSystemSettingsUtil.enableRampingRingerFromDeviceConfig()
-            && effect != null) {
-            Log.i(this, "start vibration for ramping ringer.");
-            mVibrator.vibrate(effect);
-            mIsVibrating = true;
-        } else if (shouldVibrate(mContext, foregroundCall)
-                   && !mIsVibrating && shouldRingForContact) {
-            Log.i(this, "start normal vibration.");
-            mVibrator.vibrate(effect, VIBRATION_ATTRIBUTES);
-            mIsVibrating = true;
-        } else if (mIsVibrating) {
-            Log.addEvent(foregroundCall, LogUtils.Events.SKIP_VIBRATION, "already vibrating");
+        if (hapticsFuture != null) {
+            CompletableFuture<Void> vibrateFuture =
+                    hapticsFuture.thenAccept(isUsingAudioCoupledHaptics -> {
+                if (!isUsingAudioCoupledHaptics || !mIsHapticPlaybackSupportedByDevice) {
+                    Log.i(this, "startRinging: fileHasHaptics=%b, hapticsSupported=%b",
+                            isUsingAudioCoupledHaptics, mIsHapticPlaybackSupportedByDevice);
+                    maybeStartVibration(foregroundCall, shouldRingForContact, effect,
+                            isVibratorEnabled, isRingerAudible);
+                } else {
+                    Log.addEvent(foregroundCall, LogUtils.Events.SKIP_VIBRATION,
+                            "using audio-coupled haptics");
+                }
+            });
+            if (mBlockOnRingingFuture != null) {
+                vibrateFuture.thenCompose( v -> {
+                    mBlockOnRingingFuture.complete(null);
+                    return null;
+                });
+            }
+        } else {
+            if (mBlockOnRingingFuture != null) {
+                mBlockOnRingingFuture.complete(null);
+            }
+            Log.w(this, "startRinging: No haptics future; fallback to default behavior");
+            maybeStartVibration(foregroundCall, shouldRingForContact, effect, isVibratorEnabled,
+                    isRingerAudible);
         }
 
         return shouldAcquireAudioFocus;
+    }
+
+    private void maybeStartVibration(Call foregroundCall, boolean shouldRingForContact,
+        VibrationEffect effect, boolean isVibrationEnabled, boolean isRingerAudible) {
+
+        if (isVibrationEnabled
+                && !mIsVibrating && shouldRingForContact) {
+            if (mSystemSettingsUtil.applyRampingRinger(mContext)
+                    && mSystemSettingsUtil.enableRampingRingerFromDeviceConfig()
+                    && isRingerAudible) {
+                Log.i(this, "start vibration for ramping ringer.");
+                mVibrator.vibrate(effect);
+                mIsVibrating = true;
+            } else {
+                Log.i(this, "start normal vibration.");
+                mVibrator.vibrate(effect, VIBRATION_ATTRIBUTES);
+                mIsVibrating = true;
+            }
+        } else if (mIsVibrating) {
+            Log.addEvent(foregroundCall, LogUtils.Events.SKIP_VIBRATION, "already vibrating");
+        }
     }
 
     private VibrationEffect createRampingRingerVibrationEffect(int vibrationSeconds) {
@@ -436,7 +500,7 @@ public class Ringer {
         }
     }
 
-    private boolean shouldVibrate(Context context, Call call) {
+    private boolean isVibratorEnabled(Context context, Call call) {
         AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         int ringerMode = audioManager.getRingerModeInternal();
         boolean shouldVibrate;
@@ -467,6 +531,8 @@ public class Ringer {
         if (!mVibrator.hasVibrator()) {
             return false;
         }
-        return mSystemSettingsUtil.canVibrateWhenRinging(context);
+        return mSystemSettingsUtil.canVibrateWhenRinging(context)
+            || (mSystemSettingsUtil.applyRampingRinger(context)
+                && mSystemSettingsUtil.enableRampingRingerFromDeviceConfig());
     }
 }
