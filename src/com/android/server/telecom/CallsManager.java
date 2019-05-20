@@ -2042,7 +2042,7 @@ public class CallsManager extends Call.ListenerBase
         } else {
             // Hold or disconnect the active call and request call focus for the incoming call.
             Call activeCall = (Call) mConnectionSvrFocusMgr.getCurrentFocusCall();
-            Log.d(this, "Incoming call = %s Ongoing call %s", call, activeCall);
+            Log.d(this, "answerCall: Incoming call = %s Ongoing call %s", call, activeCall);
             holdActiveCallForNewCall(call);
             mConnectionSvrFocusMgr.requestFocus(
                     call,
@@ -4586,7 +4586,7 @@ public class CallsManager extends Call.ListenerBase
     }
 
     private boolean canHold(Call call) {
-        return call.can(Connection.CAPABILITY_HOLD);
+        return call.can(Connection.CAPABILITY_HOLD) && call.getState() != CallState.DIALING;
     }
 
     private boolean supportsHold(Call call) {
