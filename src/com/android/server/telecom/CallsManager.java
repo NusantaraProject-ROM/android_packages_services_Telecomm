@@ -1600,7 +1600,13 @@ public class CallsManager extends Call.ListenerBase
 
                     boolean isVoicemail = isVoicemail(callToUse.getHandle(), accountToUse);
 
-                    if (!isVoicemail && (isRttSettingOn() || (extras != null
+                    int phoneId = SubscriptionManager.getPhoneId(
+                            mPhoneAccountRegistrar.getSubscriptionIdForPhoneAccount(
+                            callToUse.getTargetPhoneAccount()));
+                    if (!isVoicemail && (!VideoProfile.isVideo(callToUse.getVideoState())
+                            || QtiImsExtUtils.isRttSupportedOnVtCalls(
+                            phoneId, mContext))
+                            && (isRttSettingOn() || (extras != null
                             && extras.getBoolean(TelecomManager.EXTRA_START_CALL_WITH_RTT,
                             false)))) {
                         Log.d(this, "Outgoing call requesting RTT, rtt setting is %b",
