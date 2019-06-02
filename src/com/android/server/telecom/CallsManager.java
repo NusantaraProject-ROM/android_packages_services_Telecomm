@@ -1600,7 +1600,13 @@ public class CallsManager extends Call.ListenerBase
 
                     boolean isVoicemail = isVoicemail(callToUse.getHandle(), accountToUse);
 
-                    if (!isVoicemail && (isRttSettingOn() || (extras != null
+                    int phoneId = SubscriptionManager.getPhoneId(
+                            mPhoneAccountRegistrar.getSubscriptionIdForPhoneAccount(
+                            callToUse.getTargetPhoneAccount()));
+                    if (!isVoicemail && (!VideoProfile.isVideo(callToUse.getVideoState())
+                            || QtiImsExtUtils.isRttSupportedOnVtCalls(
+                            phoneId, mContext))
+                            && (isRttSettingOn() || (extras != null
                             && extras.getBoolean(TelecomManager.EXTRA_START_CALL_WITH_RTT,
                             false)))) {
                         Log.d(this, "Outgoing call requesting RTT, rtt setting is %b",
@@ -1738,7 +1744,7 @@ public class CallsManager extends Call.ListenerBase
                 new CallerInfoLookupHelper.OnQueryCompleteListener() {
                     @Override
                     public void onCallerInfoQueryComplete(Uri handle, CallerInfo info) {
-                        if (info.preferredPhoneAccountComponent != null &&
+                        if (info != null && info.preferredPhoneAccountComponent != null &&
                                 info.preferredPhoneAccountId != null &&
                                 !info.preferredPhoneAccountId.isEmpty()) {
                             PhoneAccountHandle contactDefaultHandle = new PhoneAccountHandle(
@@ -2042,7 +2048,7 @@ public class CallsManager extends Call.ListenerBase
         } else {
             // Hold or disconnect the active call and request call focus for the incoming call.
             Call activeCall = (Call) mConnectionSvrFocusMgr.getCurrentFocusCall();
-            Log.d(this, "Incoming call = %s Ongoing call %s", call, activeCall);
+            Log.d(this, "answerCall: Incoming call = %s Ongoing call %s", call, activeCall);
             holdActiveCallForNewCall(call);
             mConnectionSvrFocusMgr.requestFocus(
                     call,
@@ -4586,7 +4592,7 @@ public class CallsManager extends Call.ListenerBase
     }
 
     private boolean canHold(Call call) {
-        return call.can(Connection.CAPABILITY_HOLD);
+        return call.can(Connection.CAPABILITY_HOLD) && call.getState() != CallState.DIALING;
     }
 
     private boolean supportsHold(Call call) {
