@@ -123,7 +123,7 @@ public class BluetoothRouteManager extends StateMachine {
             BluetoothDevice erroneouslyConnectedDevice = getBluetoothAudioConnectedDevice();
             if (erroneouslyConnectedDevice != null) {
                 Log.w(LOG_TAG, "Entering AudioOff state but device %s appears to be connected. " +
-                        "Switching to audio-on state for that device", erroneouslyConnectedDevice);
+                        "Switching to audio-on state for that device.", erroneouslyConnectedDevice);
                 // change this to just transition to the new audio on state
                 transitionToActualState();
             }
@@ -262,7 +262,6 @@ public class BluetoothRouteManager extends StateMachine {
                         break;
                     case DISCONNECT_HFP:
                         disconnectAudio();
-                        transitionTo(mAudioOffState);
                         break;
                     case RETRY_HFP_CONNECTION:
                         if (Objects.equals(address, mDeviceAddress)) {
@@ -375,7 +374,6 @@ public class BluetoothRouteManager extends StateMachine {
                         break;
                     case DISCONNECT_HFP:
                         disconnectAudio();
-                        transitionTo(mAudioOffState);
                         break;
                     case RETRY_HFP_CONNECTION:
                         if (Objects.equals(address, mDeviceAddress)) {
