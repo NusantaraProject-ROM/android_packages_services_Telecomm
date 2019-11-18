@@ -561,6 +561,7 @@ public class CallAudioManager extends CallsManagerListenerBase {
                 onCallLeavingActiveDialingOrConnecting();
                 break;
             case CallState.DIALING:
+            case CallState.NEW:
                 stopRingbackForCall(call);
                 onCallLeavingActiveDialingOrConnecting();
                 break;
