@@ -251,6 +251,8 @@ public class Ringer {
 
     private int torchMode;
 
+    private boolean mBlinkActive;
+
     /** Initializes the Ringer. */
     @VisibleForTesting
     public Ringer(
@@ -454,14 +456,14 @@ public class Ringer {
                     isRingerAudible);
         }
 
-        boolean dndMode = !isRingerAudible;
         torchMode = Settings.System.getIntForUser(mContext.getContentResolver(),
                  Settings.System.FLASHLIGHT_ON_CALL, 0, UserHandle.USER_CURRENT);
 
-        boolean shouldFlash = (torchMode == 1 && !dndMode) ||
-                              (torchMode == 2 && dndMode)  ||
+        boolean shouldFlash = (torchMode == 1 && isRingerAudible) ||
+                              (torchMode == 2 && !isRingerAudible)  ||
                                torchMode == 3;
-        if (shouldFlash) {
+        if (shouldFlash && !mBlinkActive) {
+            mBlinkActive = true;
             blinkFlashlight();
         }
 
@@ -521,6 +523,8 @@ public class Ringer {
     }
 
     public void startCallWaiting(Call call, String reason) {
+        mBlinkActive = false;
+
         if (mSystemSettingsUtil.isTheaterModeOn(mContext)) {
             return;
         }
@@ -561,8 +565,8 @@ public class Ringer {
             mRingingCall = null;
         }
 
+        mBlinkActive = false;
         mRingtonePlayer.stop();
-        torchToggler.stop();
 
         // If we haven't started vibrating because we were waiting for the haptics info, cancel
         // it and don't vibrate at all.
@@ -693,7 +697,6 @@ public class Ringer {
 
     private class TorchToggler extends AsyncTask {
 
-        private boolean shouldStop = false;
         private CameraManager cameraManager;
         private int duration = 400;
         private boolean hasFlash = true;
@@ -709,16 +712,12 @@ public class Ringer {
             hasFlash = context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
         }
 
-        void stop() {
-            shouldStop = true;
-        }
-
         @Override
         protected Object doInBackground(Object[] objects) {
             if (hasFlash) {
                 try {
                     String cameraId = cameraManager.getCameraIdList()[0];
-                    while (!shouldStop) {
+                    while (mBlinkActive) {
                         cameraManager.setTorchMode(cameraId, true);
                         Thread.sleep(duration);
 
