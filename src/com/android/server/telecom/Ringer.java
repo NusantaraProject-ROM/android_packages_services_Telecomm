@@ -627,6 +627,23 @@ public class Ringer {
                     mDefaultVibrationEffect = mVibrationEffectProxy.createWaveform(DA_DZZZ_DA_VIBRATION_PATTERN,
                         SEVEN_ELEMENTS_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
                     break;
+                case 5:
+                    String[] customVib = Settings.System.getStringForUser(
+                            mContext.getContentResolver(),
+                            Settings.System.CUSTOM_RINGTONE_VIBRATION_PATTERN,
+                            UserHandle.USER_CURRENT).split(",", 3);
+                    long[] vibPattern = {
+                        0, // No delay before starting
+                        Long.parseLong(customVib[0]), // How long to vibrate
+                        400, // Delay
+                        Long.parseLong(customVib[1]), // How long to vibrate
+                        400, // Delay
+                        Long.parseLong(customVib[2]), // How long to vibrate
+                        400, // How long to wait before vibrating again            
+                    };
+                    mDefaultVibrationEffect = mVibrationEffectProxy.createWaveform(vibPattern,
+                            SEVEN_ELEMENTS_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
+                    break;
                 default:
                     mDefaultVibrationEffect = mVibrationEffectProxy.createWaveform(SIMPLE_VIBRATION_PATTERN,
                         SIMPLE_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
